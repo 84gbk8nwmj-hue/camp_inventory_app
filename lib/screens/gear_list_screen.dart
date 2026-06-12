@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/gear.dart';
+import '../widgets/reorderable_list_widgets.dart';
 import '../providers/category_provider.dart';
 import '../providers/data_transfer_provider.dart';
 import '../providers/database_providers.dart';
@@ -9,9 +9,7 @@ import '../providers/gear_provider.dart';
 import '../providers/packing_provider.dart';
 import '../services/data_transfer_service.dart';
 import '../utils/weight_format.dart';
-import '../widgets/gear_list_tile.dart';
 import 'category_list_screen.dart';
-import 'gear_detail_screen.dart';
 import 'gear_edit_screen.dart';
 import 'packing_sets_screen.dart';
 import 'theme_settings_screen.dart';
@@ -329,7 +327,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
         ),
         actions: [
           PopupMenuButton<GearSortOption>(
-            tooltip: '並び替え',
+            tooltip: '表示順',
             icon: const Icon(Icons.sort),
             initialValue: gearState.sortOption,
             onSelected: gearNotifier.setSortOption,
@@ -508,7 +506,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '≡ をドラッグして並び替え / アイテムを重ねて格納',
+                              '≡ をドラッグしてアイテムを重ねると格納',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
@@ -564,9 +562,10 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                   Expanded(
                     child: items.isEmpty
                         ? Center(child: Text(_emptyMessage(gearState, items)))
-                        : canReorder
-                            ? _buildReorderableList(items, gearNotifier)
-                            : _buildNormalList(items, gearNotifier),
+                        : GearReorderableList(
+                            items: items,
+                            notifier: gearNotifier,
+                          ),
                   ),
                 ],
               ),
@@ -600,199 +599,6 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                 ),
               ),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildNormalList(List<Gear> items, GearNotifier gearNotifier) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final gear = items[index];
-        return Dismissible(
-          key: ValueKey(gear.id),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            color: Theme.of(context).colorScheme.error,
-            child: const Icon(Icons.delete, color: Colors.white),
-          ),
-          confirmDismiss: (_) async {
-            return await showDialog<bool>(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('削除しますか？'),
-                content: Text('「${gear.name}」を削除します。'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('キャンセル'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('削除'),
-                  ),
-                ],
-              ),
-            );
-          },
-          onDismissed: (_) => gearNotifier.remove(gear.id!),
-          child: _gearTile(gear),
-        );
-      },
-    );
-  }
-
-  Widget _buildReorderableList(List<Gear> items, GearNotifier gearNotifier) {
-    return ReorderableListView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
-      itemCount: items.length,
-      onReorder: (oldIndex, newIndex) async {
-        if (newIndex > oldIndex) newIndex--;
-
-        final moved = items[oldIndex];
-        // ターゲットが直上（インデックス newIndex）のアイテムかどうか。
-        // ReorderableListView のデフォルト動作に「アイテムの上に落とす」という概念はないため、
-        // ドラッグして移動した先が、本来の「並び順」の変更なのか、
-        // それとも「あるアイテムの中に入れたい」のかを判別する必要があります。
-        // ここではシンプルに、並び替えが発生した際、移動先が特定のアイテムと「重なった」場合を扱いたいですが、
-        // 標準の ReorderableListView では位置情報の詳細取得が難しいため、
-        // 「移動先の親の parentId を引き継ぐ」または「親を解除する」といった、
-        // 並び替え結果から推測するロジックにします。
-
-        final list = List<Gear>.of(items);
-        final item = list.removeAt(oldIndex);
-        list.insert(newIndex, item);
-
-        // 基本的な並び替え保存
-        await gearNotifier.reorderItems(list.map((g) => g.id!).toList());
-
-        // 親子関係の推測:
-        // 移動後の直前のアイテムが「親」になりうるか？
-        // ここではユーザーが「上に持ってきてインデントさせる」操作を意図しているため、
-        // ドラッグ後に「親を解除したい（左に戻したい）」場合は一番上か、特定の操作が必要になります。
-        // 一旦、手動での parentId 更新は別のUI（詳細画面など）で行い、
-        // ここでは「リストの並び順」の永続化に留めます。
-        // ユーザーの要望である「ドラッグで上に持ってくると格納」を完全再現するには、
-        // DragTarget を各タイルに仕込む必要があります。
-      },
-      itemBuilder: (context, index) {
-        final gear = items[index];
-        final isChild = gear.parentId != null;
-
-        Widget tile = GearInventoryListTile(
-          gear: gear,
-          reorderIndex: index,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => GearDetailScreen(gear: gear),
-              ),
-            );
-          },
-          trailing: IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => GearEditScreen(existing: gear),
-                ),
-              );
-            },
-          ),
-        );
-
-        if (isChild) {
-          tile = Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            child: tile,
-          );
-          tile = Dismissible(
-            key: ValueKey('dismiss_${gear.id}'),
-            direction: DismissDirection.startToEnd,
-            background: Container(
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.only(left: 20),
-              color: Theme.of(context).colorScheme.tertiary,
-              child: const Icon(Icons.outbox, color: Colors.white),
-            ),
-            confirmDismiss: (direction) async {
-              if (direction == DismissDirection.startToEnd) {
-                await gearNotifier.updateParent(gear.id!, null);
-                return false; // リストからは削除しない
-              }
-              return false;
-            },
-            child: tile,
-          );
-        }
-
-        return DragTarget<int>(
-          key: ValueKey(gear.id),
-          onWillAcceptWithDetails: (details) => details.data != gear.id,
-          onAcceptWithDetails: (details) async {
-            final childId = details.data;
-            await gearNotifier.updateParent(childId, gear.id);
-          },
-          builder: (context, candidateData, rejectedData) {
-            final isCandidate = candidateData.isNotEmpty;
-            return Material(
-              color: isCandidate
-                  ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                  : Theme.of(context).colorScheme.surface,
-              child: LongPressDraggable<int>(
-                data: gear.id,
-                axis: Axis.vertical,
-                feedback: SizedBox(
-                  width: MediaQuery.of(context).size.width - 32,
-                  child: Material(
-                    elevation: 8,
-                    borderRadius: BorderRadius.circular(8),
-                    child: GearInventoryListTile(gear: gear),
-                  ),
-                ),
-                childWhenDragging: Opacity(
-                  opacity: 0.3,
-                  child: GearInventoryListTile(gear: gear, reorderIndex: index),
-                ),
-                child: tile,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _gearTile(Gear gear) {
-    return GearInventoryListTile(
-      gear: gear,
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => GearDetailScreen(gear: gear),
-          ),
-        );
-      },
-      trailing: IconButton(
-        icon: const Icon(Icons.edit),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GearEditScreen(existing: gear),
-            ),
           );
         },
       ),

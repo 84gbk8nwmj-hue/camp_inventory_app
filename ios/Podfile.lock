@@ -3,14 +3,11 @@ PODS:
   - image_cropper (0.0.4):
     - Flutter
     - TOCropViewController (~> 2.7.4)
-  - pro_image_editor (12.0.8):
-    - Flutter
   - TOCropViewController (2.7.4)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
-  - pro_image_editor (from `.symlinks/plugins/pro_image_editor/ios`)
 
 SPEC REPOS:
   trunk:
@@ -21,13 +18,10 @@ EXTERNAL SOURCES:
     :path: Flutter
   image_cropper:
     :path: ".symlinks/plugins/image_cropper/ios"
-  pro_image_editor:
-    :path: ".symlinks/plugins/pro_image_editor/ios"
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   image_cropper: 5f162dcf988100dc1513f9c6b7eb42cd6fbf9156
-  pro_image_editor: 3dedac450f82a389877286fa9eb08852cefb04ea
   TOCropViewController: 80b8985ad794298fb69d3341de183f33d1853654
 
 PODFILE CHECKSUM: 251cb053df7158f337c0712f2ab29f4e0fa474ce

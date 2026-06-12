@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:croppy/croppy.dart';
 
-import '../models/gear.dart';
 import '../models/packing_set.dart';
 import '../providers/database_providers.dart';
 import '../providers/gear_provider.dart';
@@ -61,9 +65,12 @@ class _PackingChecklistScreenState
                 onPressed: () async {
                   final picker = ImagePicker();
                   final picked = await picker.pickImage(source: ImageSource.gallery);
-                  if (picked != null) {
-                    final savedName = await ref.read(imageStorageProvider).saveFromPath(picked.path);
-                    setDialogState(() => imageFile = savedName);
+                  if (picked != null && context.mounted) {
+                    await _editPlacementImageWithProEditor(
+                      context,
+                      picked.path,
+                      (savedName) => setDialogState(() => imageFile = savedName),
+                    );
                   }
                 },
                 icon: const Icon(Icons.image_outlined),
@@ -128,33 +135,14 @@ class _PackingChecklistScreenState
       ),
       body: Column(
         children: [
-          // 上部：積載場所（ドロップターゲット + 並び替え）
+          // 上部：積載場所（ドロップターゲット）
           SizedBox(
             height: 130,
-            child: ReorderableListView(
+            child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              onReorder: (oldIndex, newIndex) {
-                // "未配置"カード(index 0)は並び替え対象外とするロジック
-                if (oldIndex == 0 || newIndex == 0) return;
-                
-                final ids = placements.map((p) => p.id!).toList();
-                // index調整（未配置カードの分を引く）
-                final adjustedOld = oldIndex - 1;
-                var adjustedNew = newIndex - 1;
-                if (adjustedNew > adjustedOld) adjustedNew -= 1;
-                
-                final movedId = ids.removeAt(adjustedOld);
-                ids.insert(adjustedNew, movedId);
-                notifier.reorderPlacements(ids);
-              },
-              proxyDecorator: (child, index, animation) => Material(
-                elevation: 10,
-                color: Colors.transparent,
-                child: child,
-              ),
               children: [
-                // 未配置ターゲット（固定、並び替え不可のダミーとして表示）
+                // 未配置ターゲット
                 _PlacementDropZone(
                   key: const ValueKey('unassigned_zone'),
                   placement: null,
@@ -229,6 +217,36 @@ class _PackingChecklistScreenState
     );
   }
 
+  Future<void> _editPlacementImageWithProEditor(
+    BuildContext context,
+    String inputPath,
+    Function(String) onDone,
+  ) async {
+    final file = File(inputPath);
+    if (!await file.exists()) return;
+
+    final result = await showCupertinoImageCropper(
+      context,
+      imageProvider: FileImage(file),
+      allowedAspectRatios: [
+        const CropAspectRatio(width: 140, height: 114),
+      ],
+    );
+
+    if (result != null) {
+      final uiImage = result.uiImage;
+      final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData != null) {
+        final bytes = byteData.buffer.asUint8List();
+        await file.writeAsBytes(bytes);
+        final savedName = await ref.read(imageStorageProvider).saveFromPath(file.path);
+        if (savedName != null) {
+          onDone(savedName);
+        }
+      }
+    }
+  }
+
   Future<void> _editPlacement(PackingPlacement placement) async {
     final nameCtrl = TextEditingController(text: placement.name);
     String? currentImage = placement.imageFile;
@@ -266,6 +284,23 @@ class _PackingChecklistScreenState
                       ),
                     ),
                     const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            await _editPlacementImageWithProEditor(
+                              context,
+                              file.path,
+                              (savedName) => setDialogState(() => currentImage = savedName),
+                            );
+                          },
+                          icon: const Icon(Icons.crop_rotate, size: 18),
+                          label: const Text('切り抜き・回転'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                   ],
                   Row(
                     children: [
@@ -274,9 +309,12 @@ class _PackingChecklistScreenState
                           onPressed: () async {
                             final picker = ImagePicker();
                             final picked = await picker.pickImage(source: ImageSource.gallery);
-                            if (picked != null) {
-                              final savedName = await ref.read(imageStorageProvider).saveFromPath(picked.path);
-                              setDialogState(() => currentImage = savedName);
+                            if (picked != null && context.mounted) {
+                              await _editPlacementImageWithProEditor(
+                                context,
+                                picked.path,
+                                (savedName) => setDialogState(() => currentImage = savedName),
+                              );
                             }
                           },
                           icon: Icon(currentImage == null ? Icons.image_outlined : Icons.sync),
@@ -377,12 +415,12 @@ class _PlacementDropZone extends ConsumerWidget {
               image: FileImage(imageFile),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withValues(alpha: isHovering ? 0.4 : 0.6),
+                Colors.black.withOpacity(isHovering ? 0.4 : 0.6),
                 BlendMode.darken,
               ),
             ) : null,
             color: imageFile != null ? null : (isHovering 
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
                 : (isUnassigned ? Theme.of(context).colorScheme.surfaceContainerHighest : Theme.of(context).colorScheme.secondaryContainer)),
           ),
           child: InkWell(
@@ -498,7 +536,7 @@ class _DraggableGearTile extends StatelessWidget {
     if (isChild) {
       tile = Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
           borderRadius: BorderRadius.circular(8),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -508,15 +546,15 @@ class _DraggableGearTile extends StatelessWidget {
         builder: (context, ref, child) {
           return Dismissible(
             key: ValueKey('dismiss_packing_${view.gear.id}'),
-            direction: DismissDirection.startToEnd,
+            direction: DismissDirection.endToStart,
             background: Container(
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.only(left: 20),
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
               color: Theme.of(context).colorScheme.tertiary,
               child: const Icon(Icons.outbox, color: Colors.white),
             ),
             confirmDismiss: (direction) async {
-              if (direction == DismissDirection.startToEnd) {
+              if (direction == DismissDirection.endToStart) {
                 await ref.read(gearProvider.notifier).updateParent(view.gear.id!, null);
                 return false;
               }

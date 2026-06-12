@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/gear.dart';
+import '../providers/category_provider.dart';
 import '../providers/gear_provider.dart';
 import '../providers/packing_provider.dart';
 import '../utils/string_utils.dart';
@@ -50,52 +51,39 @@ class _PackingSelectScreenState extends ConsumerState<PackingSelectScreen> {
   }
 
   List<Gear> get _displayGear {
-    final q = StringUtils.normalizeForSearch(_searchQuery);
-    if (q.isEmpty) return _allGear;
-    return _allGear.where((g) {
-      final name = StringUtils.normalizeForSearch(g.name);
-      final note = StringUtils.normalizeForSearch(g.note ?? '');
-      final mfr = StringUtils.normalizeForSearch(g.manufacturer ?? '');
-      return name.contains(q) || note.contains(q) || mfr.contains(q);
-    }).toList();
+    final gearState = ref.read(gearProvider);
+    final categories = ref.read(categoryProvider);
+    
+    // 現在の状態に基づいた表示用アイテム（ソート・階層化済み）を取得
+    // 検索クエリがある場合は gearProvider の displayItems をそのまま使うのが効率的
+    if (_searchQuery.trim().isNotEmpty) {
+      return gearState.displayItems(categories).where((g) => _allGear.any((ag) => ag.id == g.id)).toList();
+    }
+
+    // 検索していない場合は、現在のセットに含まれる候補ギアを階層化して表示
+    // gearState.displayItems(categories) は GearSortOption.manual の時に階層化する
+    return gearState.displayItems(categories);
   }
 
   Future<void> _toggle(int gearId, bool value) async {
-    setState(() {
-      if (value) {
-        _included.add(gearId);
-      } else {
-        _included.remove(gearId);
-      }
-    });
     try {
       await ref
           .read(packingProvider.notifier)
           .setIncludedForSet(widget.setId, gearId, value);
+      
+      // 再帰的な更新を反映するため最新のIDリストを再取得
+      final included = await ref.read(packingProvider.notifier).loadIncludedIds(widget.setId);
+      if (mounted) {
+        setState(() {
+          _included = included;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        if (value) {
-          _included.remove(gearId);
-        } else {
-          _included.add(gearId);
-        }
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('保存に失敗しました: $e')),
       );
     }
-  }
-
-  Future<void> _onReorderItem(int oldIndex, int newIndex) async {
-    if (_searchQuery.trim().isNotEmpty) return; // 検索中は並び替え不可
-
-    final list = List<Gear>.of(_allGear);
-    final item = list.removeAt(oldIndex);
-    list.insert(newIndex, item);
-    setState(() => _allGear = list);
-    final ids = list.map((g) => g.id!).toList();
-    await ref.read(gearProvider.notifier).reorderItems(ids);
   }
 
   int get _selectedCount =>
@@ -166,30 +154,12 @@ class _PackingSelectScreenState extends ConsumerState<PackingSelectScreen> {
                   ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _searchQuery.trim().isNotEmpty
-                    ? '検索中は並び替えできません'
-                    : '≡ をドラッグして並び替え',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _searchQuery.trim().isNotEmpty
-                          ? Theme.of(context).colorScheme.error
-                          : null,
-                    ),
-              ),
-            ),
-          ),
           Expanded(
             child: _displayGear.isEmpty
                 ? const Center(child: Text('一致するギアがありません'))
-                : ReorderableListView.builder(
+                : ListView.builder(
                     padding: const EdgeInsets.only(bottom: 80),
                     itemCount: _displayGear.length,
-                    onReorderItem: _onReorderItem,
-                    buildDefaultDragHandles: _searchQuery.trim().isEmpty,
                     itemBuilder: (context, index) {
                       final gear = _displayGear[index];
                       final id = gear.id!;
@@ -199,7 +169,7 @@ class _PackingSelectScreenState extends ConsumerState<PackingSelectScreen> {
                         color: Theme.of(context).colorScheme.surface,
                         child: GearInventoryListTile(
                           gear: gear,
-                          reorderIndex: _searchQuery.trim().isEmpty ? index : null,
+                          reorderIndex: null,
                           trailing: Checkbox(
                             value: included,
                             onChanged: (v) {

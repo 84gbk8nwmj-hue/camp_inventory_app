@@ -74,7 +74,7 @@ class WeightStatusDot extends StatelessWidget {
   }
 }
 
-/// 一覧の leading（並び替えハンドル・サムネイル）
+/// 一覧の leading（格納用ハンドル・サムネイル）
 class GearListRowLeading extends StatelessWidget {
   final Gear gear;
   final int? reorderIndex;

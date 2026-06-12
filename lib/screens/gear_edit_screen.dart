@@ -1,11 +1,11 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:croppy/croppy.dart';
 
 import '../data/camp_manufacturers.dart';
 import '../models/gear.dart';
@@ -171,68 +171,49 @@ class _GearEditScreenState extends ConsumerState<GearEditScreen> {
     super.dispose();
   }
 
+  Future<void> _editImageWithCroppy(String inputPath, {required double aspectRatio}) async {
+    final file = File(inputPath);
+    if (!await file.exists()) return;
+
+    if (mounted) {
+      CropAspectRatio cropAspectRatio;
+      if (aspectRatio == 1.0) {
+        cropAspectRatio = const CropAspectRatio(width: 1, height: 1);
+      } else if ((aspectRatio - 140.0 / 114.0).abs() < 0.01) {
+        cropAspectRatio = const CropAspectRatio(width: 140, height: 114);
+      } else {
+        cropAspectRatio = CropAspectRatio(
+          width: (aspectRatio * 100).round(),
+          height: 100,
+        );
+      }
+
+      final result = await showCupertinoImageCropper(
+        context,
+        imageProvider: FileImage(file),
+        allowedAspectRatios: [cropAspectRatio],
+      );
+
+      if (result != null) {
+        final uiImage = result.uiImage;
+        final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) {
+          final bytes = byteData.buffer.asUint8List();
+          await file.writeAsBytes(bytes);
+          await _onImageAdjusted(inputPath);
+        }
+      }
+    }
+  }
+
   Future<void> _pickImage({required ImageSource source}) async {
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: source);
       if (picked == null) return;
 
-      String finalPath = picked.path;
-
-      // ライブラリからの選択時のみ調整を試みる
-      if (source == ImageSource.gallery && mounted) {
-        final croppedFile = await ImageCropper().cropImage(
-          sourcePath: picked.path,
-          uiSettings: [
-            AndroidUiSettings(
-              toolbarTitle: '編集',
-              toolbarColor: Theme.of(context).colorScheme.surface,
-              toolbarWidgetColor: Theme.of(context).colorScheme.onSurface,
-              initAspectRatio: CropAspectRatioPreset.square,
-              lockAspectRatio: false,
-              aspectRatioPresets: [
-                CropAspectRatioPreset.original,
-                CropAspectRatioPreset.square,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio16x9,
-              ],
-            ),
-            IOSUiSettings(
-              title: '編集',
-              doneButtonTitle: '保存',
-              cancelButtonTitle: 'キャンセル',
-              aspectRatioPresets: [
-                CropAspectRatioPreset.original,
-                CropAspectRatioPreset.square,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio16x9,
-              ],
-            ),
-          ],
-        );
-
-        if (croppedFile != null) {
-          finalPath = croppedFile.path;
-        } else {
-          // 編集をキャンセルした場合は処理を中断
-          return;
-        }
-      }
-
-      final fileName =
-          await ref.read(imageStorageProvider).saveFromPath(finalPath);
-      if (fileName != null) {
-        _setStateAndDirty(() => _imageFile = fileName);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('写真を取り込みました'),
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-            ),
-          );
-        }
+      if (mounted) {
+        await _editImageWithCroppy(picked.path, aspectRatio: 1.0);
       }
     } catch (e) {
       debugPrint('Error picking/editing image: $e');
@@ -254,26 +235,70 @@ class _GearEditScreenState extends ConsumerState<GearEditScreen> {
     }
   }
 
+  Future<void> _editCurrentImage() async {
+    if (_imageFile == null) return;
+    try {
+      final file = ref.read(imageStorageProvider).resolveFile(_imageFile);
+      if (file == null) return;
+
+      if (mounted) {
+        await _editImageWithCroppy(file.path, aspectRatio: 1.0);
+      }
+    } catch (e) {
+      debugPrint('Error editing current image: $e');
+    }
+  }
+
+  Future<void> _onImageAdjusted(String finalPath) async {
+    final fileName =
+        await ref.read(imageStorageProvider).saveFromPath(finalPath);
+    if (fileName != null) {
+      _setStateAndDirty(() => _imageFile = fileName);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('写真を取り込みました'),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final categories = ref.read(categoryProvider);
     final category = categories.byId(_categoryId ?? -1);
     if (category == null) return;
 
-    final gear = Gear(
-      id: widget.existing?.id,
-      name: _nameCtrl.text.trim(),
-      categoryId: category.id!,
-      categoryName: category.name,
-      quantity: _quantity,
-      weight: _weightCtrl.text.trim().isEmpty
-          ? null
-          : double.tryParse(_weightCtrl.text.trim()),
-      imageFile: _imageFile,
-      note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-      manufacturer: CampManufacturers.normalize(_manufacturer),
-      weightVerified: _weightVerified && _parsedWeight != null,
-    );
+    final gear = widget.existing?.copyWith(
+          name: _nameCtrl.text.trim(),
+          categoryId: category.id!,
+          categoryName: category.name,
+          quantity: _quantity,
+          weight: _weightCtrl.text.trim().isEmpty
+              ? null
+              : double.tryParse(_weightCtrl.text.trim()),
+          imageFile: _imageFile,
+          note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+          manufacturer: CampManufacturers.normalize(_manufacturer),
+          weightVerified: _weightVerified && _parsedWeight != null,
+          clearImageFile: _imageFile == null,
+          clearManufacturer: _manufacturer == null || _manufacturer!.isEmpty,
+        ) ??
+        Gear(
+          name: _nameCtrl.text.trim(),
+          categoryId: category.id!,
+          categoryName: category.name,
+          quantity: _quantity,
+          weight: _weightCtrl.text.trim().isEmpty
+              ? null
+              : double.tryParse(_weightCtrl.text.trim()),
+          imageFile: _imageFile,
+          note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+          manufacturer: CampManufacturers.normalize(_manufacturer),
+          weightVerified: _weightVerified && _parsedWeight != null,
+        );
 
     final notifier = ref.read(gearProvider.notifier);
     if (widget.existing == null) {
@@ -429,7 +454,7 @@ class _GearEditScreenState extends ConsumerState<GearEditScreen> {
                   key: _formKey,
                   child: ListView(
                     controller: _scrollCtrl,
-                    padding: const EdgeInsets.only(top: 4, bottom: 16),
+                    padding: const EdgeInsets.only(top: 4, bottom: 96),
                     children: [
                       ManufacturerPickerField(
                         value: _manufacturer,
@@ -592,6 +617,32 @@ class _GearEditScreenState extends ConsumerState<GearEditScreen> {
                       const SizedBox(height: 12),
                       if (_imageFile != null) ...[
                         GearImagePreview(gear: previewGear),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _editCurrentImage,
+                              icon: const Icon(Icons.crop_rotate, size: 18),
+                              label: const Text('切り抜き・回転'),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: () => _setStateAndDirty(
+                                  () => _imageFile = null),
+                              icon: Icon(Icons.delete_outline,
+                                  color: Theme.of(context).colorScheme.error),
+                              label: Text('削除',
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error)),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                    color: Theme.of(context).colorScheme.error),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                       ],
                       const SizedBox(height: 12),

@@ -217,14 +217,6 @@ class _ManufacturerPickerSheetState
     }
   }
 
-  Future<void> _reorderManufacturers(int oldIndex, int newIndex) async {
-    final notifier = ref.read(manufacturerProvider.notifier);
-    final list = await notifier.managedManufacturers();
-    final moved = list.removeAt(oldIndex);
-    list.insert(newIndex, moved);
-    await notifier.reorder(list);
-  }
-
   Future<void> _handleManufacturerAction(String action, String name) async {
     switch (action) {
       case 'edit':
@@ -240,7 +232,6 @@ class _ManufacturerPickerSheetState
     final manufacturers = ref.watch(manufacturerProvider);
     final notifier = ref.read(manufacturerProvider.notifier);
     final filtered = notifier.search(_query);
-    final canReorder = _query.trim().isEmpty;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -300,38 +291,20 @@ class _ManufacturerPickerSheetState
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       )
-                    : canReorder
-                        ? ReorderableListView.builder(
-                            scrollController: scrollController,
-                            itemCount: manufacturers.length,
-                            onReorderItem: _reorderManufacturers,
-                            itemBuilder: (context, index) {
-                              final name = manufacturers[index];
-                              return _ManufacturerListTile(
-                                key: ValueKey('manufacturer_$name'),
-                                name: name,
-                                selected: widget.initial == name,
-                                reorderIndex: index,
-                                onSelect: () => Navigator.pop(context, name),
-                                onAction: (action) =>
-                                    _handleManufacturerAction(action, name),
-                              );
-                            },
-                          )
-                        : ListView.builder(
-                            controller: scrollController,
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              final name = filtered[index];
-                              return _ManufacturerListTile(
-                                name: name,
-                                selected: widget.initial == name,
-                                onSelect: () => Navigator.pop(context, name),
-                                onAction: (action) =>
-                                    _handleManufacturerAction(action, name),
-                              );
-                            },
-                          ),
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final name = filtered[index];
+                          return _ManufacturerListTile(
+                            name: name,
+                            selected: widget.initial == name,
+                            onSelect: () => Navigator.pop(context, name),
+                            onAction: (action) =>
+                                _handleManufacturerAction(action, name),
+                          );
+                        },
+                      ),
               ),
             ],
           );
@@ -344,7 +317,6 @@ class _ManufacturerPickerSheetState
 class _ManufacturerListTile extends StatelessWidget {
   final String name;
   final bool selected;
-  final int? reorderIndex;
   final VoidCallback onSelect;
   final ValueChanged<String> onAction;
 
@@ -352,7 +324,6 @@ class _ManufacturerListTile extends StatelessWidget {
     super.key,
     required this.name,
     required this.selected,
-    this.reorderIndex,
     required this.onSelect,
     required this.onAction,
   });
@@ -362,7 +333,6 @@ class _ManufacturerListTile extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surface,
       child: ListTile(
-        leading: reorderIndex == null ? null : DragHandle(index: reorderIndex!),
         title: Text(name),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,

@@ -242,7 +242,22 @@ class PackingNotifier extends Notifier<PackingState> {
   // --- Items ---
 
   Future<void> setIncludedForSet(int setId, int gearId, bool included) async {
-    await _db.setPackingItemIncluded(setId, gearId, included);
+    final gearItems = ref.read(gearProvider).items;
+
+    Future<void> updateRecursive(int currentId, bool targetValue) async {
+      await _db.setPackingItemIncluded(setId, currentId, targetValue);
+      
+      // 子ギアを探して再帰的に更新
+      final children = gearItems.where((g) => g.parentId == currentId);
+      for (final child in children) {
+        if (child.id != null) {
+          await updateRecursive(child.id!, targetValue);
+        }
+      }
+    }
+
+    await updateRecursive(gearId, included);
+
     if (state.activeSetId == setId) {
       await _applySetItems(setId);
     }
@@ -250,14 +265,24 @@ class PackingNotifier extends Notifier<PackingState> {
   }
 
   Future<void> setPackedForSet(int setId, int gearId, bool isPacked) async {
-    await _db.setPackingItemPacked(setId, gearId, isPacked);
-    if (state.activeSetId == setId) {
-      final entry = state.activeItems[gearId];
-      if (entry != null) {
-        final items = Map<int, PackingSetItem>.from(state.activeItems);
-        items[gearId] = entry.copyWith(isPacked: isPacked);
-        state = state.copyWith(activeItems: items);
+    final gearItems = ref.read(gearProvider).items;
+
+    Future<void> updateRecursive(int currentId, bool targetValue) async {
+      await _db.setPackingItemPacked(setId, currentId, targetValue);
+      
+      // 子ギアを探して再帰的に更新（ただし、そのセットに含まれている場合のみ）
+      final children = gearItems.where((g) => g.parentId == currentId);
+      for (final child in children) {
+        if (child.id != null && state.activeItems.containsKey(child.id)) {
+          await updateRecursive(child.id!, targetValue);
+        }
       }
+    }
+
+    await updateRecursive(gearId, isPacked);
+
+    if (state.activeSetId == setId) {
+      await _applySetItems(setId);
     }
   }
 
@@ -295,6 +320,17 @@ class PackingNotifier extends Notifier<PackingState> {
     // stateを最新の状態に更新
     if (state.activeSetId == setId) {
       await _applySetItems(setId);
+    }
+  }
+
+  /// ギアの親子関係が変更された際に、積載場所を親に合わせる
+  Future<void> syncPlacementWithParent(int gearId, int parentId) async {
+    if (state.activeSetId == null) return;
+    
+    final parentItem = state.activeItems[parentId];
+    if (parentItem != null) {
+      // 親の配置場所に合わせる（再帰的に子孫も更新される）
+      await setPlacementForGear(state.activeSetId!, gearId, parentItem.placementId);
     }
   }
 
