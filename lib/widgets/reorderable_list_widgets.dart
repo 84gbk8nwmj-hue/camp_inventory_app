@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/gear.dart';
 import '../providers/gear_provider.dart';
+import '../providers/category_provider.dart';
 import '../widgets/gear_list_tile.dart';
 import '../screens/gear_detail_screen.dart';
 import '../screens/gear_edit_screen.dart';
 
-class GearReorderableList extends ConsumerStatefulWidget {
+class GearReorderableList extends ConsumerWidget {
   final List<Gear> items;
   final GearNotifier notifier;
 
@@ -18,111 +19,130 @@ class GearReorderableList extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<GearReorderableList> createState() => _GearReorderableListState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(categoryProvider);
 
-class _GearReorderableListState extends ConsumerState<GearReorderableList> {
-  int? _targetId;
-  int? _draggedId;
-  // 0: none, 1: insert above, 2: nest into, 3: insert below
-  int _targetMode = 0;
-
-  void _clearTarget() {
-    if (_targetId != null || _targetMode != 0) {
-      setState(() {
-        _targetId = null;
-        _targetMode = 0;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      // ドラッグ中はスクロールを禁止してジェスチャー競合を防ぐ
-      physics: _draggedId != null
-          ? const NeverScrollableScrollPhysics()
-          : const BouncingScrollPhysics(),
+    return ReorderableListView.builder(
+      onReorder: (oldIndex, newIndex) {
+        notifier.reorderWithSubtree(oldIndex, newIndex, categories);
+      },
       padding: const EdgeInsets.only(bottom: 80),
-      itemCount: widget.items.length,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final gear = widget.items[index];
+        final gear = items[index];
         final id = gear.id;
-        if (id == null) return const SizedBox.shrink();
+        if (id == null) return const SizedBox.shrink(key: ValueKey('empty'));
 
         final isChild = gear.parentId != null;
 
-        return DragTarget<int>(
-          key: ValueKey('target_$id'),
-          onWillAcceptWithDetails: (details) => details.data != id,
-          onMove: (details) {
-            const mode = 2; // 常に格納モード
-            if (_targetId != id || _targetMode != mode) {
-              setState(() {
-                _targetId = id;
-                _targetMode = mode;
-              });
+        return Dismissible(
+          key: ValueKey('item_$id'),
+          direction: DismissDirection.horizontal,
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.startToEnd) {
+              // 右スワイプ: 格納先の選択
+              await _showParentSelector(context, gear);
+            } else if (direction == DismissDirection.endToStart) {
+              // 左スワイプ: 解除
+              await notifier.unnestItem(id);
             }
+            return false; // 実際にはリストから削除しない
           },
-          onLeave: (_) => _clearTarget(),
-          onAcceptWithDetails: (details) async {
-            final movedId = details.data;
-            _clearTarget();
+          background: Container(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20),
+            child: Row(
+              children: [
+                Icon(Icons.account_tree, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('格納先を選択', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          secondaryBackground: Container(
+            color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('解除', style: TextStyle(color: Theme.of(context).colorScheme.tertiary, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Icon(Icons.outbox, color: Theme.of(context).colorScheme.tertiary),
+              ],
+            ),
+          ),
+          child: _buildTile(context, gear, index, isChild),
+        );
+      },
+    );
+  }
 
-            await widget.notifier.reorderItemsWithHierarchy(
-              movedId: movedId,
-              targetId: id,
-              mode: 2, // 常に格納モード
-            );
-          },
-          builder: (context, candidateData, rejectedData) {
-            final isTarget = _targetId == id;
+  Future<void> _showParentSelector(BuildContext context, Gear gear) async {
+    final candidates = notifier.getParentCandidates(gear.id!);
+    final currentParentId = gear.parentId;
 
-            return LongPressDraggable<int>(
-              key: ValueKey('drag_$id'),
-              data: id,
-              // axis を指定しないことで iOS のジェスチャー判定を安定させる
-              delay: const Duration(milliseconds: 300),
-              hapticFeedbackOnStart: true,
-              dragAnchorStrategy: childDragAnchorStrategy,
-              onDragStarted: () {
-                setState(() => _draggedId = id);
-              },
-              onDragEnd: (_) {
-                setState(() => _draggedId = null);
-                _clearTarget();
-              },
-              onDraggableCanceled: (_, __) {
-                setState(() => _draggedId = null);
-                _clearTarget();
-              },
-              childWhenDragging: Opacity(
-                opacity: 0.2,
-                child: _buildTile(gear, index, isChild),
-              ),
-              feedback: Opacity(
-                opacity: 0.9,
-                child: Material(
-                  elevation: 12,
-                  borderRadius: BorderRadius.circular(8),
-                  color: Theme.of(context).colorScheme.surface,
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width - 16,
-                    child: _buildTile(gear, index, isChild, isFeedback: true),
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    '格納先を選択: ${gear.name}',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-              ),
-              child: Stack(
-                children: [
-                  _buildTile(gear, index, isChild),
-                  if (isTarget)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: _buildDropGuide(context),
-                      ),
-                    ),
-                ],
-              ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: candidates.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return ListTile(
+                          leading: const SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: Icon(Icons.not_interested),
+                          ),
+                          title: const Text('解除（親なし）'),
+                          selected: currentParentId == null,
+                          onTap: () {
+                            notifier.updateParent(gear.id!, null);
+                            Navigator.pop(context);
+                          },
+                        );
+                      }
+                      final candidate = candidates[index - 1];
+                      return ListTile(
+                        leading: SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: GearListTileLeading(gear: candidate),
+                        ),
+                        title: Text(candidate.name),
+                        subtitle: Text(candidate.categoryName),
+                        selected: currentParentId == candidate.id,
+                        onTap: () {
+                          notifier.updateParent(gear.id!, candidate.id);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -130,63 +150,30 @@ class _GearReorderableListState extends ConsumerState<GearReorderableList> {
     );
   }
 
-  bool _isDescendantOf(Gear gear, int? potentialParentId) {
-    if (potentialParentId == null) return false;
-    int? currentParentId = gear.parentId;
-    while (currentParentId != null) {
-      if (currentParentId == potentialParentId) return true;
-      final parent = widget.items.firstWhere(
-        (g) => g.id == currentParentId,
-        orElse: () => gear,
-      );
-      if (parent.id == gear.id) break;
-      currentParentId = parent.parentId;
-    }
-    return false;
-  }
-
-  Widget _buildDropGuide(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        border: Border.all(color: color, width: 2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.move_to_inbox, color: color),
-            const SizedBox(width: 8),
-            Text(
-              '格納',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTile(Gear gear, int index, bool isChild, {bool isFeedback = false}) {
-    Widget tile = GearInventoryListTile(
+  Widget _buildTile(BuildContext context, Gear gear, int index, bool isChild) {
+    // ReorderableListView ではハンドルが自動で付く場合もあるが、
+    // GearListRowLeading 内でカスタムハンドルを表示するように設定されている
+    final leading = GearListRowLeading(
       gear: gear,
       reorderIndex: index,
-      onTap: isFeedback ? null : () {
+      // ReorderableListView の標準ハンドルを使用する場合は builder は null でよいが、
+      // 既存のデザインを維持するため ReorderableDragStartListener で包む
+      dragHandleBuilder: (context, handle) => ReorderableDragStartListener(
+        index: index,
+        child: handle,
+      ),
+    );
+
+    Widget tile = GearInventoryListTile(
+      gear: gear,
+      leading: leading,
+      onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => GearDetailScreen(gear: gear)),
         );
       },
-      trailing: isFeedback ? const IconButton(
-        icon: Icon(Icons.edit),
-        onPressed: null,
-      ) : IconButton(
+      trailing: IconButton(
         icon: const Icon(Icons.edit),
         onPressed: () {
           Navigator.push(
@@ -206,26 +193,8 @@ class _GearReorderableListState extends ConsumerState<GearReorderableList> {
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
         child: tile,
       );
-      if (!isFeedback) {
-        tile = Dismissible(
-          key: ValueKey('dismiss_${gear.id}'),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            color: Theme.of(context).colorScheme.tertiary,
-            child: const Icon(Icons.outbox, color: Colors.white),
-          ),
-          confirmDismiss: (direction) async {
-            if (direction == DismissDirection.endToStart) {
-              await widget.notifier.updateParent(gear.id!, null);
-            }
-            return false;
-          },
-          child: tile,
-        );
-      }
     }
+
     return tile;
   }
 }

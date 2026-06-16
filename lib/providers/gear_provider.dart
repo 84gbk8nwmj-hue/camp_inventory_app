@@ -147,9 +147,6 @@ class GearState {
   }
 
   double filteredTotalWeight(List<Gear> displayed) {
-    // 親子構造の場合、親の重さに子の重さが含まれるべきかどうかは運用次第だが、
-    // ここでは単純に表示されている全アイテムの合計を出す（親子で重複カウントしないよう注意が必要かもしれないが、
-    // 現状は全アイテムがリストに1回ずつ登場するのでこれでOK）
     return displayed.fold(0.0, (sum, g) => sum + gearLineWeight(g));
   }
 
@@ -211,6 +208,11 @@ class GearNotifier extends Notifier<GearState> {
         for (final g in state.items) if (g.id == childId) updated else g,
       ],
     );
+    
+    // 積載場所の同期
+    if (parentId != null) {
+      await ref.read(packingProvider.notifier).syncPlacementWithParent(childId, parentId);
+    }
   }
 
   void setFilterCategoryId(int? categoryId) {
@@ -228,119 +230,84 @@ class GearNotifier extends Notifier<GearState> {
     state = state.copyWith(sortOption: option);
   }
 
-  /// 親子構造を維持した格納の実行
-  Future<void> reorderItemsWithHierarchy({
-    required int movedId,
-    required int targetId,
-    required int mode, // 1: 上, 2: 内, 3: 下
-  }) async {
-    final allItems = List<Gear>.from(state.items);
-    
-    // 1. 移動対象とその全子孫を特定（連続したブロックとして抽出）
-    final movedIdx = allItems.indexWhere((g) => g.id == movedId);
-    if (movedIdx == -1) return;
+  Future<void> unnestItem(int childId) async {
+    // このアイテム自体の親子関係を解除する
+    await updateParent(childId, null);
+  }
 
-    final List<Gear> movingBlock = [allItems[movedIdx]];
+  List<Gear> getParentCandidates(int gearId) {
+    // 自分自身とその子孫を除外したリストを返す
+    final descendants = _getDescendantIds(gearId);
+    return state.items
+        .where((g) => g.id != gearId && !descendants.contains(g.id))
+        .toList();
+  }
+
+  Set<int> _getDescendantIds(int parentId) {
+    final ids = <int>{};
+    final children = state.items.where((g) => g.parentId == parentId).toList();
+    for (final child in children) {
+      if (child.id != null) {
+        ids.add(child.id!);
+        ids.addAll(_getDescendantIds(child.id!));
+      }
+    }
+    return ids;
+  }
+
+  Future<void> reorderWithSubtree(int oldIndex, int newIndex, CategoryState categories) async {
+    final list = state.displayItems(categories);
+    if (oldIndex == newIndex) return;
+
+    // 1. 移動対象のサブツリーを特定（移動アイテムとそのすべての子孫）
+    final movingItem = list[oldIndex];
+    final subtree = <Gear>[movingItem];
+    final subtreeIds = {movingItem.id};
     
-    // 子孫を抽出する（現在のソート順で連続していることを前提とする）
-    int i = movedIdx + 1;
-    while (i < allItems.length) {
-      if (_isDescendantOf(allItems[i], movedId, allItems)) {
-        movingBlock.add(allItems[i]);
-        i++;
+    int j = oldIndex + 1;
+    while (j < list.length) {
+      final item = list[j];
+      if (item.parentId != null && subtreeIds.contains(item.parentId)) {
+        subtree.add(item);
+        subtreeIds.add(item.id);
+        j++;
       } else {
         break;
       }
     }
 
-    // 元の位置からブロックを削除
-    allItems.removeRange(movedIdx, movedIdx + movingBlock.length);
-
-    // 2. 挿入位置と新しい親の決定
-    final targetGear = allItems.firstWhere((g) => g.id == targetId);
-    final targetIdx = allItems.indexWhere((g) => g.id == targetId);
+    // 2. リスト内での位置変更
+    final newList = List<Gear>.from(list);
+    newList.removeRange(oldIndex, oldIndex + subtree.length);
     
-    int insertIdx;
+    int adjustedNewIndex = newIndex;
+    if (oldIndex < newIndex) {
+      adjustedNewIndex -= subtree.length;
+    }
+    newList.insertAll(adjustedNewIndex, subtree);
+
+    // 3. 親子関係の更新（移動先の直前のアイテムと同じ親にする）
+    final movedRoot = subtree[0];
     int? newParentId;
-
-    if (mode == 2) {
-      // 格納: ターゲットの直後に挿入、親はターゲット自身
-      insertIdx = targetIdx + 1;
-      newParentId = targetId;
-    } else if (mode == 1) {
-      // 上に挿入: ターゲットの位置に挿入、親はターゲットと同じ
-      insertIdx = targetIdx;
-      newParentId = targetGear.parentId;
+    if (adjustedNewIndex > 0) {
+      newParentId = newList[adjustedNewIndex - 1].parentId;
     } else {
-      // 下に挿入: ターゲットとその子孫の後に挿入、親はターゲットと同じ
-      insertIdx = targetIdx + 1;
-      while (insertIdx < allItems.length &&
-          _isDescendantOf(allItems[insertIdx], targetId, allItems)) {
-        insertIdx++;
-      }
-      newParentId = targetGear.parentId;
+      newParentId = null;
     }
-
-    // 指定位置にブロックを挿入
-    allItems.insertAll(insertIdx, movingBlock);
-
-    // 3. 移動主体の親 ID を更新
-    final updatedMovingBlock = movingBlock.map((g) {
-      if (g.id == movedId) {
-        return g.copyWith(parentId: newParentId, clearParentId: newParentId == null);
-      }
-      return g;
-    }).toList();
     
-    // リスト内の該当箇所を差し替え
-    allItems.replaceRange(insertIdx, insertIdx + movingBlock.length, updatedMovingBlock);
-
-    // 4. 全アイテムの sort_order をリストの順序に従って 0 から振り直し
-    final finalItems = <Gear>[];
-    for (int j = 0; j < allItems.length; j++) {
-      finalItems.add(allItems[j].copyWith(sortOrder: j));
+    // parentId が変わる場合のみ更新
+    if (movedRoot.parentId != newParentId) {
+      await updateParent(movedRoot.id!, newParentId);
+      // updateParent 内で state が更新されるが、
+      // 後の reorderItems でさらに最新の newList に基づいて上書きされるため問題ない
     }
 
-    // 5. DB の更新 (トランザクション的に一括更新)
-    // まず移動主体の親を更新
-    await _db.updateGear(finalItems.firstWhere((g) => g.id == movedId));
-    // 全体の sort_order を更新
-    await _db.updateGearSortOrder(finalItems.map((g) => g.id!).toList());
-
-    // 5.5 積載場所の同期 (現在アクティブなパッキングセットがあれば)
-    if (newParentId != null) {
-      await ref.read(packingProvider.notifier).syncPlacementWithParent(movedId, newParentId);
-    }
-
-    // 6. 状態の反映
-    state = state.copyWith(items: finalItems);
-    print('DEBUG: Reorder Complete. New Order: ${finalItems.map((g) => "${g.name}(P:${g.parentId}, S:${g.sortOrder})").join(", ")}');
+    // 4. 全体の並び順（sortOrder）を確定
+    final orderedIds = newList.map((g) => g.id!).toList();
+    await reorderItems(orderedIds);
   }
 
-  bool _isDescendantOf(Gear gear, int potentialParentId, List<Gear> allItems) {
-    int? currentParentId = gear.parentId;
-    while (currentParentId != null) {
-      if (currentParentId == potentialParentId) return true;
-      final parent = allItems.firstWhere(
-        (g) => g.id == currentParentId,
-        orElse: () => gear,
-      );
-      if (parent.id == gear.id) break;
-      currentParentId = parent.parentId;
-    }
-    return false;
-  }
-
-  Future<void> reorderItems(List<int> orderedIds, {int? movedId, int? newParentId, bool clearParent = false}) async {
-    // 既存の reorderItems は下位互換のために残すが、今後は reorderItemsWithHierarchy を推奨
-    if (movedId != null) {
-      await reorderItemsWithHierarchy(
-        movedId: movedId,
-        targetId: orderedIds.firstWhere((id) => id != movedId), // 暫定
-        mode: 1, 
-      );
-      return;
-    }
+  Future<void> reorderItems(List<int> orderedIds) async {
     await _db.updateGearSortOrder(orderedIds);
     final orderIndex = {for (var i = 0; i < orderedIds.length; i++) orderedIds[i]: i};
     state = state.copyWith(

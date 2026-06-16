@@ -74,15 +74,19 @@ class WeightStatusDot extends StatelessWidget {
   }
 }
 
+typedef DragHandleBuilder = Widget Function(BuildContext context, Widget handle);
+
 /// 一覧の leading（格納用ハンドル・サムネイル）
 class GearListRowLeading extends StatelessWidget {
   final Gear gear;
   final int? reorderIndex;
+  final DragHandleBuilder? dragHandleBuilder;
 
   const GearListRowLeading({
     super.key,
     required this.gear,
     this.reorderIndex,
+    this.dragHandleBuilder,
   });
 
   @override
@@ -98,7 +102,9 @@ class GearListRowLeading extends StatelessWidget {
             SizedBox(
               width: GearListTileLayout.dragWidth,
               child: Center(
-                child: DragHandle(index: reorderIndex!),
+                child: dragHandleBuilder != null
+                    ? dragHandleBuilder!(context, DragHandle(index: reorderIndex!))
+                    : DragHandle(index: reorderIndex!),
               ),
             ),
             const SizedBox(width: GearListTileLayout.gap),

@@ -506,55 +506,9 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '≡ をドラッグしてアイテムを重ねると格納',
+                              '≡ をドラッグして並べ替え / 左右スワイプで格納・解除',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
-                          ),
-                          DragTarget<int>(
-                            onAcceptWithDetails: (details) async {
-                              await gearNotifier.updateParent(details.data, null);
-                            },
-                            builder: (context, candidateData, _) {
-                              final active = candidateData.isNotEmpty;
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: active
-                                      ? Theme.of(context).colorScheme.errorContainer
-                                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: active
-                                        ? Theme.of(context).colorScheme.error
-                                        : Colors.transparent,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.outbox,
-                                      size: 16,
-                                      color: active
-                                          ? Theme.of(context).colorScheme.onErrorContainer
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '格納解除',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                            color: active
-                                                ? Theme.of(context).colorScheme.onErrorContainer
-                                                : null,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
                           ),
                         ],
                       ),
