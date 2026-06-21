@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>「Gear Base」プライバシーポリシー</title>
+    <meta name="description" content="キャンプギア管理アプリ「Gear Base」のプライバシーポリシーです。本アプリはユーザーの個人情報を収集せず、データはすべて端末内に安全に保存されます。">
+    
+    <!-- Google Fonts: Outfit & Noto Sans JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Light mode color palette */
+            --bg-gradient-start: #f8fafc;
+            --bg-gradient-end: #f1f5f9;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(226, 232, 240, 0.8);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --accent-color: #0ea5e9;
+            --accent-gradient: linear-gradient(135deg, #0ea5e9, #2563eb);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+            --badge-bg: #e0f2fe;
+            --badge-text: #0369a1;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode color palette */
+                --bg-gradient-start: #0f172a;
+                --bg-gradient-end: #020617;
+                --card-bg: rgba(30, 41, 59, 0.7);
+                --card-border: rgba(51, 65, 85, 0.5);
+                --text-primary: #f8fafc;
+                --text-secondary: #cbd5e1;
+                --text-muted: #94a3b8;
+                --accent-color: #38bdf8;
+                --accent-gradient: linear-gradient(135deg, #38bdf8, #3b82f6);
+                --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+                --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+                --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+                --badge-bg: #0c4a6e;
+                --badge-text: #e0f2fe;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.7;
+            padding: 24px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 24px 0 12px 0;
+        }
+
+        .logo-placeholder {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-md);
+            animation: float 6s ease-in-out infinite;
+            overflow: hidden;
+            border-radius: 16px;
+        }
+
+        .logo-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        h1 {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Overview Card */
+        .overview-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .overview-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .overview-item-icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .overview-item-title {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .overview-item-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Policy Detail Cards */
+        .policy-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .policy-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .card-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--badge-bg);
+            color: var(--badge-text);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            margin-right: 12px;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        p, li {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        ul {
+            list-style: none;
+            margin-top: 8px;
+        }
+
+        li {
+            position: relative;
+            padding-left: 18px;
+            margin-bottom: 8px;
+        }
+
+        li::before {
+            content: "•";
+            color: var(--accent-color);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+            position: absolute;
+            left: 8px;
+        }
+
+        .contact-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dashed var(--accent-color);
+            transition: color 0.2s ease;
+        }
+
+        .contact-link:hover {
+            color: var(--text-primary);
+            border-bottom-style: solid;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-bottom: 24px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .last-updated {
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-placeholder">
+                <img src="./icon.png" alt="Gear Base">
+            </div>
+            <h1>Gear Base</h1>
+            <p class="subtitle">プライバシーポリシー</p>
+        </header>
+
+        <!-- Overview Quick Cards -->
+        <section class="overview-card">
+            <div class="overview-item">
+                <span class="overview-item-icon">🔒</span>
+                <span class="overview-item-title">個人情報の収集</span>
+                <span class="overview-item-value">なし</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-item-icon">💾</span>
+                <span class="overview-item-title">データの保存先</span>
+                <span class="overview-item-value">端末内 (SQLite)</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-item-icon">🌐</span>
+                <span class="overview-item-title">外部サーバー送信</span>
+                <span class="overview-item-value">なし</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-item-icon">🤖</span>
+                <span class="overview-item-title">Google Play</span>
+                <span class="overview-item-value">準拠・対応</span>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main>
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">01</div>
+                    <h2>収集する情報および収集方法</h2>
+                </div>
+                <p>本アプリ（Gear Base）では、以下の情報をお客様の操作によってのみ収集・保持します。</p>
+                <ul>
+                    <li>ユーザーが登録したキャンプギアに関する情報（名称、メーカー名、重量、数量、メモ、画像）</li>
+                    <li>ユーザーが作成した持ち出しセット（チェックリスト）の情報</li>
+                </ul>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">02</div>
+                    <h2>情報の利用目的</h2>
+                </div>
+                <p>収集した情報は、以下の目的でのみ利用します。その他の目的で利用することはありません。</p>
+                <ul>
+                    <li>アプリ内でのキャンプギアの管理および持ち出しリストの作成・表示</li>
+                    <li>ユーザー自身の操作によるデータのバックアップおよびエクスポート機能の実行</li>
+                </ul>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">03</div>
+                    <h2>情報の保存および管理方法</h2>
+                </div>
+                <p>本アプリで入力・登録されたすべてのデータ（ギア情報および画像ファイル等）は、お客様の<strong>端末内のローカルデータベース（SQLite）およびローカルストレージにのみ保存</strong>されます。</p>
+                <p>開発者を含む第三者がこれらのデータを閲覧、収集、または外部サーバーに無断で保存・送信することは一切ありません。</p>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">04</div>
+                    <h2>第三者提供および外部送信</h2>
+                </div>
+                <p>本アプリは、お客様の同意なしに利用者情報を第三者に提供したり、外部へ送信したりすることはありません。ただし、以下の場合は除きます。</p>
+                <ul>
+                    <li>お客様自身がアプリ内の「共有」や「バックアップ」機能を利用して、明示的に外部ストレージや他アプリへデータを送信・保存する場合</li>
+                    <li>法令に基づく提供要請があった場合</li>
+                </ul>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">05</div>
+                    <h2>外部サービスの使用について</h2>
+                </div>
+                <p>本アプリでは、表示の最適化およびユーザーの明示的な操作のために、以下の外部サービスとの連携を行う場合があります。</p>
+                <ul>
+                    <li><strong>Google Fonts</strong>: アプリ内フォントの表示に使用されます。</li>
+                    <li><strong>Amazon.co.jp 検索</strong>: お客様がギア情報の検索や確認を行う際、ブラウザを起動して商品検索ページを表示します。</li>
+                </ul>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">06</div>
+                    <h2>免責事項</h2>
+                </div>
+                <p>本アプリの利用により生じた何らかのトラブルや損失、損害等に対し、開発者は一切の責任を負わないものとします。データのバックアップ等は、お客様ご自身の責任において定期的に行っていただきますようお願いいたします。</p>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">07</div>
+                    <h2>本方針の変更</h2>
+                </div>
+                <p>本プライバシーポリシーは、アプリのアップデートや法令の変更等に伴い、予告なく変更されることがあります。変更後のプライバシーポリシーは、本ページに掲載された時点から効力を生じるものとします。</p>
+            </article>
+
+            <article class="policy-card">
+                <div class="card-header">
+                    <div class="card-number">08</div>
+                    <h2>お問い合わせ</h2>
+                </div>
+                <p>ご不明な点や個人情報の取り扱いに関するご要望がございましたら、以下の連絡先までお問い合わせください。</p>
+                <p style="margin-top: 12px; font-weight: 500;">
+                    Email: <a href="mailto:amethyst.black.pearl@gmail.com" class="contact-link">amethyst.black.pearl@gmail.com</a>
+                </p>
+            </article>
+        </main>
+
+        <footer>
+            <p class="last-updated">策定・最終更新日：2026年6月20日</p>
+            <p>&copy; 2026 Gear Base All Rights Reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>

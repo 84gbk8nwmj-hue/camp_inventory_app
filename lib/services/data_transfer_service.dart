@@ -54,8 +54,7 @@ class ImportResult {
       return 'セットに ${templateItemsMatched} 点を追加'
           '${templateItemsSkipped > 0 ? '（${templateItemsSkipped} 点は在庫に未登録）' : ''}';
     }
-    final imagePart =
-        imagesImported > 0 ? '、画像 $imagesImported 枚' : '';
+    final imagePart = imagesImported > 0 ? '、画像 $imagesImported 枚' : '';
     return 'カテゴリ +$categoriesAdded、'
         'ギア +$gearAdded / 更新 $gearUpdated、'
         'セット +$setsAdded$imagePart';
@@ -96,6 +95,33 @@ class DataTransferService {
 
   static const backupJsonName = 'backup.json';
 
+  Future<
+      ({
+        List<Gear> gear,
+        List<GearCategory> categories,
+        List<PackingSet> packingSets,
+        Map<int, List<PackingSetItem>> packingItemsBySet
+      })> _loadBackupDataFromDatabase() async {
+    final gear = await _db.getAllGear();
+    final categories = await _db.getCategories();
+    final packingSets = await _db.getPackingSets();
+    final packingItemsBySet = <int, List<PackingSetItem>>{};
+
+    for (final set in packingSets) {
+      final id = set.id;
+      if (id != null) {
+        packingItemsBySet[id] = await _db.getPackingSetItems(id);
+      }
+    }
+
+    return (
+      gear: gear,
+      categories: categories,
+      packingSets: packingSets,
+      packingItemsBySet: packingItemsBySet,
+    );
+  }
+
   Map<String, dynamic> _buildBackupPayload({
     required List<Gear> gear,
     required List<GearCategory> categories,
@@ -121,6 +147,16 @@ class DataTransferService {
     };
   }
 
+  Future<void> shareBackupJsonFromDatabase() async {
+    final data = await _loadBackupDataFromDatabase();
+    await shareBackupJson(
+      gear: data.gear,
+      categories: data.categories,
+      packingSets: data.packingSets,
+      packingItemsBySet: data.packingItemsBySet,
+    );
+  }
+
   Future<void> shareBackupJson({
     required List<Gear> gear,
     required List<GearCategory> categories,
@@ -134,6 +170,17 @@ class DataTransferService {
       packingItemsBySet: packingItemsBySet,
     );
     await _shareJsonFile(payload, 'camp_gear_backup');
+  }
+
+  /// JSON + gear_images/ を ZIP にまとめて共有
+  Future<void> shareBackupZipFromDatabase() async {
+    final data = await _loadBackupDataFromDatabase();
+    await shareBackupZip(
+      gear: data.gear,
+      categories: data.categories,
+      packingSets: data.packingSets,
+      packingItemsBySet: data.packingItemsBySet,
+    );
   }
 
   /// JSON + gear_images/ を ZIP にまとめて共有
@@ -154,7 +201,8 @@ class DataTransferService {
     final temp = await getTemporaryDirectory();
     final stamp = _timestamp();
     final workDir = Directory(p.join(temp.path, 'camp_export_$stamp'));
-    final imagesOut = Directory(p.join(workDir.path, ImageStorageService.imagesSubDir));
+    final imagesOut =
+        Directory(p.join(workDir.path, ImageStorageService.imagesSubDir));
 
     try {
       await workDir.create(recursive: true);
@@ -175,8 +223,21 @@ class DataTransferService {
       final zipPath = p.join(temp.path, 'camp_gear_backup_$stamp.zip');
       final encoder = ZipFileEncoder();
       encoder.create(zipPath);
-      encoder.addDirectory(workDir);
-      encoder.close();
+
+      await encoder.addFile(
+        File(p.join(workDir.path, backupJsonName)),
+        backupJsonName,
+      );
+
+      await for (final entity in imagesOut.list()) {
+        if (entity is! File) continue;
+        await encoder.addFile(
+          entity,
+          p.posix
+              .join(ImageStorageService.imagesSubDir, p.basename(entity.path)),
+        );
+      }
+      await encoder.close();
 
       await Share.shareXFiles(
         [XFile(zipPath, mimeType: 'application/zip')],
@@ -213,6 +274,9 @@ class DataTransferService {
         throw FormatException('ZIP内に $backupJsonName が見つかりません。');
       }
 
+      // JSONファイルがあるディレクトリを基準にする
+      final baseDir = jsonFile.parent.path;
+
       final json =
           jsonDecode(await jsonFile.readAsString()) as Map<String, dynamic>;
       if (json['type'] == 'packing_set_template') {
@@ -224,7 +288,7 @@ class DataTransferService {
         await _images.clearAllImages();
       }
 
-      final imagesImported = await _images.importFromDirectory(extractDir);
+      final imagesImported = await _images.importFromDirectory(baseDir);
       final result = await importBackupJson(
         json,
         mode: mode,
@@ -499,23 +563,21 @@ class DataTransferService {
 
   Future<String> _extractZipToTemp(String zipPath) async {
     final temp = await getTemporaryDirectory();
-    final dest = p.join(temp.path, 'camp_import_${DateTime.now().millisecondsSinceEpoch}');
+    final dest = p.join(
+        temp.path, 'camp_import_${DateTime.now().millisecondsSinceEpoch}');
     await Directory(dest).create(recursive: true);
     await extractFileToDisk(zipPath, dest);
     return dest;
   }
 
   Future<File?> _findBackupJson(String rootDir) async {
-    final direct = File(p.join(rootDir, backupJsonName));
-    if (await direct.exists()) return direct;
+    final dir = Directory(rootDir);
+    if (!await dir.exists()) return null;
 
-    await for (final entity in Directory(rootDir).list()) {
-      if (entity is File && p.basename(entity.path) == backupJsonName) {
+    await for (final entity in dir.list(recursive: true)) {
+      if (entity is File &&
+          p.basename(entity.path).toLowerCase() == backupJsonName) {
         return entity;
-      }
-      if (entity is Directory) {
-        final nested = File(p.join(entity.path, backupJsonName));
-        if (await nested.exists()) return nested;
       }
     }
     return null;

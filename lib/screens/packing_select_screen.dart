@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/gear.dart';
-import '../providers/category_provider.dart';
 import '../providers/gear_provider.dart';
 import '../providers/packing_provider.dart';
 import '../utils/string_utils.dart';
@@ -51,18 +50,63 @@ class _PackingSelectScreenState extends ConsumerState<PackingSelectScreen> {
   }
 
   List<Gear> get _displayGear {
-    final gearState = ref.read(gearProvider);
-    final categories = ref.read(categoryProvider);
-    
-    // 現在の状態に基づいた表示用アイテム（ソート・階層化済み）を取得
-    // 検索クエリがある場合は gearProvider の displayItems をそのまま使うのが効率的
-    if (_searchQuery.trim().isNotEmpty) {
-      return gearState.displayItems(categories).where((g) => _allGear.any((ag) => ag.id == g.id)).toList();
+    var list = List<Gear>.of(_allGear)
+      ..sort((a, b) {
+        final order = a.sortOrder.compareTo(b.sortOrder);
+        return order != 0 ? order : a.name.compareTo(b.name);
+      });
+
+    final q = StringUtils.normalizeForSearch(_searchQuery);
+    if (q.isNotEmpty) {
+      return list.where((g) {
+        final name = StringUtils.normalizeForSearch(g.name);
+        final note = StringUtils.normalizeForSearch(g.note ?? '');
+        final mfr = StringUtils.normalizeForSearch(g.manufacturer ?? '');
+        return name.contains(q) || note.contains(q) || mfr.contains(q);
+      }).toList();
     }
 
-    // 検索していない場合は、現在のセットに含まれる候補ギアを階層化して表示
-    // gearState.displayItems(categories) は GearSortOption.manual の時に階層化する
-    return gearState.displayItems(categories);
+    return _buildHierarchy(list);
+  }
+
+  List<Gear> _buildHierarchy(List<Gear> flatList) {
+    final result = <Gear>[];
+    final childrenOf = <int, List<Gear>>{};
+    final roots = <Gear>[];
+
+    for (final g in flatList) {
+      if (g.parentId == null) {
+        roots.add(g);
+      } else {
+        childrenOf.putIfAbsent(g.parentId!, () => []).add(g);
+      }
+    }
+
+    void addWithChildren(Gear parent) {
+      result.add(parent);
+      final children = childrenOf[parent.id];
+      if (children == null) return;
+      children.sort((a, b) {
+        final order = a.sortOrder.compareTo(b.sortOrder);
+        return order != 0 ? order : a.name.compareTo(b.name);
+      });
+      for (final child in children) {
+        addWithChildren(child);
+      }
+    }
+
+    for (final root in roots) {
+      addWithChildren(root);
+    }
+
+    final addedIds = result.map((g) => g.id).toSet();
+    for (final g in flatList) {
+      if (!addedIds.contains(g.id)) {
+        result.add(g);
+      }
+    }
+
+    return result;
   }
 
   Future<void> _toggle(int gearId, bool value) async {
@@ -70,9 +114,11 @@ class _PackingSelectScreenState extends ConsumerState<PackingSelectScreen> {
       await ref
           .read(packingProvider.notifier)
           .setIncludedForSet(widget.setId, gearId, value);
-      
+
       // 再帰的な更新を反映するため最新のIDリストを再取得
-      final included = await ref.read(packingProvider.notifier).loadIncludedIds(widget.setId);
+      final included = await ref
+          .read(packingProvider.notifier)
+          .loadIncludedIds(widget.setId);
       if (mounted) {
         setState(() {
           _included = included;

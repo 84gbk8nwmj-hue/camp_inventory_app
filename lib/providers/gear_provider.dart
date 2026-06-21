@@ -286,11 +286,21 @@ class GearNotifier extends Notifier<GearState> {
     }
     newList.insertAll(adjustedNewIndex, subtree);
 
-    // 3. 親子関係の更新（移動先の直前のアイテムと同じ親にする）
+    // 3. 親子関係の更新
     final movedRoot = subtree[0];
     int? newParentId;
     if (adjustedNewIndex > 0) {
-      newParentId = newList[adjustedNewIndex - 1].parentId;
+      final prevItem = newList[adjustedNewIndex - 1];
+      if (prevItem.id == movedRoot.parentId) {
+        // 親の直後に移動した場合は、その親の子になる
+        newParentId = prevItem.id;
+      } else if (prevItem.parentId == movedRoot.parentId) {
+        // 同じ親を持つ兄弟の後に移動した場合は、その親を維持
+        newParentId = prevItem.parentId;
+      } else {
+        // それ以外に移動した場合は、移動先の直前アイテムの親に合わせる
+        newParentId = prevItem.parentId;
+      }
     } else {
       newParentId = null;
     }
@@ -298,8 +308,6 @@ class GearNotifier extends Notifier<GearState> {
     // parentId が変わる場合のみ更新
     if (movedRoot.parentId != newParentId) {
       await updateParent(movedRoot.id!, newParentId);
-      // updateParent 内で state が更新されるが、
-      // 後の reorderItems でさらに最新の newList に基づいて上書きされるため問題ない
     }
 
     // 4. 全体の並び順（sortOrder）を確定

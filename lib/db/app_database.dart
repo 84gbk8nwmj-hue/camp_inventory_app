@@ -16,7 +16,21 @@ class AppDatabase {
     return _db!;
   }
 
-  static const defaultCategories = ['テント', '焚き火', '調理', '寝具', 'その他'];
+  static const defaultCategories = [
+    '収納',
+    'クーラーBOX',
+    'テント',
+    'ファニチャー',
+    '寝具',
+    '焚き火',
+    'ランタン・照明',
+    '調理',
+    'カトラリー',
+    'TOOL',
+    'ペグ',
+    '電源',
+    'その他',
+  ];
 
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();

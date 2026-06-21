@@ -1,0 +1,956 @@
+{
+  "app": "camp_inventory_app",
+  "type": "full_backup",
+  "version": 2,
+  "exportedAt": "2026-06-21T01:55:28.442263",
+  "categories": [
+    {
+      "id": 11,
+      "name": "収納",
+      "sortOrder": 0
+    },
+    {
+      "id": 12,
+      "name": "クーラーBOX",
+      "sortOrder": 1
+    },
+    {
+      "id": 1,
+      "name": "テント",
+      "sortOrder": 2
+    },
+    {
+      "id": 9,
+      "name": "ファニチャー",
+      "sortOrder": 3
+    },
+    {
+      "id": 4,
+      "name": "寝具",
+      "sortOrder": 4
+    },
+    {
+      "id": 2,
+      "name": "焚き火",
+      "sortOrder": 5
+    },
+    {
+      "id": 7,
+      "name": "ランタン・照明",
+      "sortOrder": 6
+    },
+    {
+      "id": 3,
+      "name": "調理",
+      "sortOrder": 7
+    },
+    {
+      "id": 6,
+      "name": "カトラリー",
+      "sortOrder": 8
+    },
+    {
+      "id": 10,
+      "name": "TOOL",
+      "sortOrder": 9
+    },
+    {
+      "id": 13,
+      "name": "ペグ",
+      "sortOrder": 10
+    },
+    {
+      "id": 14,
+      "name": "電源",
+      "sortOrder": 11
+    },
+    {
+      "id": 8,
+      "name": "その他",
+      "sortOrder": 12
+    }
+  ],
+  "gear": [
+    {
+      "id": 35,
+      "name": "コンテナBOX",
+      "categoryId": 11,
+      "categoryName": "収納",
+      "quantity": 1,
+      "weight": 2600.0,
+      "imageFile": "gear_1781478042424.jpg",
+      "note": null,
+      "manufacturer": "CAINZ",
+      "weightVerified": true,
+      "sortOrder": 0,
+      "parentId": null
+    },
+    {
+      "id": 21,
+      "name": "チタンペグ",
+      "categoryId": 13,
+      "categoryName": "ペグ",
+      "quantity": 6,
+      "weight": 50.0,
+      "imageFile": "gear_1780395678835.jpg",
+      "note": null,
+      "manufacturer": "soomloom",
+      "weightVerified": true,
+      "sortOrder": 1,
+      "parentId": 35
+    },
+    {
+      "id": 38,
+      "name": "タープ 3.5mx3.5m",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 1800.0,
+      "imageFile": "gear_1781702120206.jpg",
+      "note": null,
+      "manufacturer": "LUHANA",
+      "weightVerified": true,
+      "sortOrder": 2,
+      "parentId": 35
+    },
+    {
+      "id": 40,
+      "name": "ホットサンドメーカー",
+      "categoryId": 3,
+      "categoryName": "調理",
+      "quantity": 1,
+      "weight": 360.0,
+      "imageFile": "gear_1781760390579.jpg",
+      "note": null,
+      "manufacturer": "ビックスワロー",
+      "weightVerified": true,
+      "sortOrder": 3,
+      "parentId": 35
+    },
+    {
+      "id": 37,
+      "name": "W-218H-5BJF",
+      "categoryId": 10,
+      "categoryName": "TOOL",
+      "quantity": 1,
+      "weight": 37.0,
+      "imageFile": "gear_1781656631957.jpg",
+      "note": null,
+      "manufacturer": "CASIO",
+      "weightVerified": true,
+      "sortOrder": 4,
+      "parentId": null
+    },
+    {
+      "id": 39,
+      "name": "保冷缶ホルダー 350ml",
+      "categoryId": 6,
+      "categoryName": "カトラリー",
+      "quantity": 1,
+      "weight": 100.0,
+      "imageFile": "gear_1781742810891.jpg",
+      "note": null,
+      "manufacturer": "THERMOS",
+      "weightVerified": true,
+      "sortOrder": 5,
+      "parentId": null
+    },
+    {
+      "id": 36,
+      "name": "薪バサミ",
+      "categoryId": 2,
+      "categoryName": "焚き火",
+      "quantity": 1,
+      "weight": 200.0,
+      "imageFile": "gear_1781655405858.jpg",
+      "note": null,
+      "manufacturer": "Field to Summit",
+      "weightVerified": true,
+      "sortOrder": 6,
+      "parentId": null
+    },
+    {
+      "id": 24,
+      "name": "ソフトクーラー15L",
+      "categoryId": 12,
+      "categoryName": "クーラーBOX",
+      "quantity": 1,
+      "weight": 400.0,
+      "imageFile": "gear_1780408261846.jpg",
+      "note": null,
+      "manufacturer": "THERMOS",
+      "weightVerified": true,
+      "sortOrder": 7,
+      "parentId": null
+    },
+    {
+      "id": 4,
+      "name": "チタンマグ300",
+      "categoryId": 6,
+      "categoryName": "カトラリー",
+      "quantity": 1,
+      "weight": 50.0,
+      "imageFile": "gear_1780124165690.jpg",
+      "note": null,
+      "manufacturer": "snow peak",
+      "weightVerified": true,
+      "sortOrder": 8,
+      "parentId": null
+    },
+    {
+      "id": 33,
+      "name": "ライダースワンポールテント",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 2600.0,
+      "imageFile": "gear_1780875415681.jpg",
+      "note": null,
+      "manufacturer": "DOD",
+      "weightVerified": true,
+      "sortOrder": 9,
+      "parentId": null
+    },
+    {
+      "id": 31,
+      "name": "カーボンスチール",
+      "categoryId": 3,
+      "categoryName": "調理",
+      "quantity": 1,
+      "weight": 56.0,
+      "imageFile": "gear_1780615632611.jpg",
+      "note": "No9",
+      "manufacturer": "OPINEL",
+      "weightVerified": true,
+      "sortOrder": 10,
+      "parentId": null
+    },
+    {
+      "id": 5,
+      "name": "DIETZ 50",
+      "categoryId": 7,
+      "categoryName": "ランタン・照明",
+      "quantity": 1,
+      "weight": 350.0,
+      "imageFile": "gear_1780127500127.jpg",
+      "note": null,
+      "manufacturer": "DIETZ",
+      "weightVerified": true,
+      "sortOrder": 11,
+      "parentId": null
+    },
+    {
+      "id": 34,
+      "name": "テント",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 2200.0,
+      "imageFile": "gear_1780978589834.jpg",
+      "note": null,
+      "manufacturer": "TOMOUNT",
+      "weightVerified": true,
+      "sortOrder": 12,
+      "parentId": null
+    },
+    {
+      "id": 6,
+      "name": "デュオ",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 4700.0,
+      "imageFile": "gear_1780151671159.jpg",
+      "note": null,
+      "manufacturer": "VASTLAND",
+      "weightVerified": true,
+      "sortOrder": 13,
+      "parentId": null
+    },
+    {
+      "id": 9,
+      "name": "ソロドーム",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 1800.0,
+      "imageFile": "gear_1781333315993.jpg",
+      "note": null,
+      "manufacturer": "BUNDOK",
+      "weightVerified": true,
+      "sortOrder": 14,
+      "parentId": null
+    },
+    {
+      "id": 10,
+      "name": "マルチグリドル",
+      "categoryId": 3,
+      "categoryName": "調理",
+      "quantity": 1,
+      "weight": 540.0,
+      "imageFile": "gear_1780202605832.jpg",
+      "note": null,
+      "manufacturer": "日丸優品",
+      "weightVerified": true,
+      "sortOrder": 15,
+      "parentId": null
+    },
+    {
+      "id": 11,
+      "name": "エクスギア　ソロ",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 2180.0,
+      "imageFile": "gear_1780203169453.jpg",
+      "note": null,
+      "manufacturer": "CAPTAIN STAG",
+      "weightVerified": true,
+      "sortOrder": 16,
+      "parentId": null
+    },
+    {
+      "id": 12,
+      "name": "ハンドウォーマー",
+      "categoryId": 10,
+      "categoryName": "TOOL",
+      "quantity": 1,
+      "weight": 109.0,
+      "imageFile": "gear_1780203442804.jpg",
+      "note": null,
+      "manufacturer": "ハクキンカイロ",
+      "weightVerified": true,
+      "sortOrder": 17,
+      "parentId": null
+    },
+    {
+      "id": 13,
+      "name": "pepper spray",
+      "categoryId": 10,
+      "categoryName": "TOOL",
+      "quantity": 1,
+      "weight": 224.0,
+      "imageFile": "gear_1780209629540.jpg",
+      "note": null,
+      "manufacturer": "UDAP",
+      "weightVerified": true,
+      "sortOrder": 18,
+      "parentId": null
+    },
+    {
+      "id": 14,
+      "name": "ウィンドスクリーン",
+      "categoryId": 2,
+      "categoryName": "焚き火",
+      "quantity": 1,
+      "weight": 1400.0,
+      "imageFile": "gear_1780226954188.jpg",
+      "note": null,
+      "manufacturer": "CAMP GREEB",
+      "weightVerified": true,
+      "sortOrder": 19,
+      "parentId": null
+    },
+    {
+      "id": 15,
+      "name": "クーラーBOX 15.1L",
+      "categoryId": 12,
+      "categoryName": "クーラーBOX",
+      "quantity": 1,
+      "weight": 3010.0,
+      "imageFile": "gear_1780227760806.jpg",
+      "note": null,
+      "manufacturer": "STANLEY",
+      "weightVerified": true,
+      "sortOrder": 20,
+      "parentId": null
+    },
+    {
+      "id": 16,
+      "name": "チェアー",
+      "categoryId": 9,
+      "categoryName": "ファニチャー",
+      "quantity": 1,
+      "weight": 3000.0,
+      "imageFile": "gear_1780228466208.jpg",
+      "note": null,
+      "manufacturer": "BUNDOK",
+      "weightVerified": true,
+      "sortOrder": 21,
+      "parentId": null
+    },
+    {
+      "id": 17,
+      "name": "オゼン ライト",
+      "categoryId": 9,
+      "categoryName": "ファニチャー",
+      "quantity": 1,
+      "weight": 270.0,
+      "imageFile": "gear_1780270849481.jpg",
+      "note": null,
+      "manufacturer": "snow peak",
+      "weightVerified": true,
+      "sortOrder": 22,
+      "parentId": null
+    },
+    {
+      "id": 19,
+      "name": "コンパニオン",
+      "categoryId": 10,
+      "categoryName": "TOOL",
+      "quantity": 1,
+      "weight": 84.0,
+      "imageFile": "gear_1780321763748.jpg",
+      "note": null,
+      "manufacturer": "Morakniv",
+      "weightVerified": true,
+      "sortOrder": 23,
+      "parentId": null
+    },
+    {
+      "id": 20,
+      "name": "ハンギングラック",
+      "categoryId": 9,
+      "categoryName": "ファニチャー",
+      "quantity": 1,
+      "weight": 1360.0,
+      "imageFile": "gear_1780374895890.jpg",
+      "note": null,
+      "manufacturer": "BUNDOK",
+      "weightVerified": true,
+      "sortOrder": 24,
+      "parentId": null
+    },
+    {
+      "id": 7,
+      "name": "STICK BURNER",
+      "categoryId": 2,
+      "categoryName": "焚き火",
+      "quantity": 1,
+      "weight": 170.0,
+      "imageFile": "gear_1780148598658.jpg",
+      "note": null,
+      "manufacturer": "DCM",
+      "weightVerified": true,
+      "sortOrder": 25,
+      "parentId": null
+    },
+    {
+      "id": 23,
+      "name": "RIVER 2pro",
+      "categoryId": 14,
+      "categoryName": "電源",
+      "quantity": 1,
+      "weight": 8250.0,
+      "imageFile": "gear_1780403972263.jpg",
+      "note": null,
+      "manufacturer": "EcoFlow",
+      "weightVerified": true,
+      "sortOrder": 26,
+      "parentId": null
+    },
+    {
+      "id": 25,
+      "name": "キャンプテーブル",
+      "categoryId": 9,
+      "categoryName": "ファニチャー",
+      "quantity": 1,
+      "weight": 1600.0,
+      "imageFile": "gear_1780414154066.jpg",
+      "note": null,
+      "manufacturer": "MOON LENSE",
+      "weightVerified": true,
+      "sortOrder": 27,
+      "parentId": null
+    },
+    {
+      "id": 26,
+      "name": "LEDランタン",
+      "categoryId": 7,
+      "categoryName": "ランタン・照明",
+      "quantity": 1,
+      "weight": 360.0,
+      "imageFile": "gear_1780479723162.jpg",
+      "note": null,
+      "manufacturer": "BAREBONES",
+      "weightVerified": true,
+      "sortOrder": 28,
+      "parentId": null
+    },
+    {
+      "id": 29,
+      "name": "ランタン中",
+      "categoryId": 7,
+      "categoryName": "ランタン・照明",
+      "quantity": 1,
+      "weight": 370.0,
+      "imageFile": "gear_1780614491685.jpg",
+      "note": null,
+      "manufacturer": "CAPTAIN STAG",
+      "weightVerified": true,
+      "sortOrder": 29,
+      "parentId": null
+    },
+    {
+      "id": 30,
+      "name": "カセットコンロ",
+      "categoryId": 3,
+      "categoryName": "調理",
+      "quantity": 1,
+      "weight": 1200.0,
+      "imageFile": "gear_1780614709244.jpg",
+      "note": null,
+      "manufacturer": null,
+      "weightVerified": true,
+      "sortOrder": 30,
+      "parentId": null
+    },
+    {
+      "id": 32,
+      "name": "薪スタンド",
+      "categoryId": 11,
+      "categoryName": "収納",
+      "quantity": 1,
+      "weight": 780.0,
+      "imageFile": "gear_1780616245008.jpg",
+      "note": null,
+      "manufacturer": "TOYOTOMI",
+      "weightVerified": true,
+      "sortOrder": 31,
+      "parentId": null
+    },
+    {
+      "id": 2,
+      "name": "KANU",
+      "categoryId": 1,
+      "categoryName": "テント",
+      "quantity": 1,
+      "weight": 5400.0,
+      "imageFile": "gear_1780104580018.jpg",
+      "note": null,
+      "manufacturer": "GOGlamping",
+      "weightVerified": true,
+      "sortOrder": 32,
+      "parentId": null
+    },
+    {
+      "id": 8,
+      "name": "ソロキッチン",
+      "categoryId": 3,
+      "categoryName": "調理",
+      "quantity": 1,
+      "weight": 1100.0,
+      "imageFile": "gear_1780149163200.jpg",
+      "note": null,
+      "manufacturer": "camping moon",
+      "weightVerified": true,
+      "sortOrder": 33,
+      "parentId": null
+    },
+    {
+      "id": 3,
+      "name": "焚き火台",
+      "categoryId": 2,
+      "categoryName": "焚き火",
+      "quantity": 1,
+      "weight": 985.0,
+      "imageFile": "gear_1780104796094.jpg",
+      "note": null,
+      "manufacturer": "Tokyo Camp",
+      "weightVerified": true,
+      "sortOrder": 34,
+      "parentId": null
+    }
+  ],
+  "packingSets": [
+    {
+      "id": 4,
+      "name": "スカイバレー",
+      "createdAt": "2026-05-31T20:18:20.614614",
+      "updatedAt": "2026-06-19T21:20:15.173748",
+      "placements": null
+    },
+    {
+      "id": 6,
+      "name": "角田大橋",
+      "createdAt": "2026-06-10T00:16:31.778449",
+      "updatedAt": "2026-06-18T23:36:44.961806",
+      "placements": null
+    },
+    {
+      "id": 7,
+      "name": "クアハウス",
+      "createdAt": "2026-06-12T22:42:13.646781",
+      "updatedAt": "2026-06-16T21:11:44.842758",
+      "placements": null
+    },
+    {
+      "id": 3,
+      "name": "ベリーキャンプ場",
+      "createdAt": "2026-05-30T20:26:13.836747",
+      "updatedAt": "2026-05-30T21:36:59.308744",
+      "placements": null
+    },
+    {
+      "id": 2,
+      "name": "野呂ロッジ",
+      "createdAt": "2026-05-30T20:21:10.497967",
+      "updatedAt": "2026-05-30T20:21:17.609985",
+      "placements": null
+    },
+    {
+      "id": 1,
+      "name": "ふもとっぱら",
+      "createdAt": "2026-05-30T15:04:49.447017",
+      "updatedAt": "2026-05-30T20:17:39.238196",
+      "placements": null
+    }
+  ],
+  "packingItems": [
+    {
+      "setId": 4,
+      "items": [
+        {
+          "set_id": 4,
+          "gear_id": 5,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 0
+        },
+        {
+          "set_id": 4,
+          "gear_id": 10,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 1
+        },
+        {
+          "set_id": 4,
+          "gear_id": 13,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 2
+        },
+        {
+          "set_id": 4,
+          "gear_id": 7,
+          "placement_id": 7,
+          "is_packed": 0,
+          "sort_order": 3
+        },
+        {
+          "set_id": 4,
+          "gear_id": 8,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 4
+        },
+        {
+          "set_id": 4,
+          "gear_id": 4,
+          "placement_id": 8,
+          "is_packed": 0,
+          "sort_order": 5
+        },
+        {
+          "set_id": 4,
+          "gear_id": 3,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 6
+        },
+        {
+          "set_id": 4,
+          "gear_id": 14,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 7
+        },
+        {
+          "set_id": 4,
+          "gear_id": 15,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 8
+        },
+        {
+          "set_id": 4,
+          "gear_id": 16,
+          "placement_id": 8,
+          "is_packed": 0,
+          "sort_order": 9
+        },
+        {
+          "set_id": 4,
+          "gear_id": 19,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 10
+        },
+        {
+          "set_id": 4,
+          "gear_id": 20,
+          "placement_id": 7,
+          "is_packed": 0,
+          "sort_order": 11
+        },
+        {
+          "set_id": 4,
+          "gear_id": 24,
+          "placement_id": 8,
+          "is_packed": 0,
+          "sort_order": 12
+        },
+        {
+          "set_id": 4,
+          "gear_id": 25,
+          "placement_id": 7,
+          "is_packed": 0,
+          "sort_order": 13
+        },
+        {
+          "set_id": 4,
+          "gear_id": 26,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 15
+        },
+        {
+          "set_id": 4,
+          "gear_id": 29,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 16
+        },
+        {
+          "set_id": 4,
+          "gear_id": 30,
+          "placement_id": 7,
+          "is_packed": 0,
+          "sort_order": 17
+        },
+        {
+          "set_id": 4,
+          "gear_id": 31,
+          "placement_id": 8,
+          "is_packed": 0,
+          "sort_order": 18
+        },
+        {
+          "set_id": 4,
+          "gear_id": 32,
+          "placement_id": 5,
+          "is_packed": 0,
+          "sort_order": 19
+        },
+        {
+          "set_id": 4,
+          "gear_id": 35,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 20
+        },
+        {
+          "set_id": 4,
+          "gear_id": 21,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 21
+        },
+        {
+          "set_id": 4,
+          "gear_id": 38,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 22
+        },
+        {
+          "set_id": 4,
+          "gear_id": 40,
+          "placement_id": 9,
+          "is_packed": 0,
+          "sort_order": 23
+        }
+      ]
+    },
+    {
+      "setId": 6,
+      "items": [
+        {
+          "set_id": 6,
+          "gear_id": 37,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 0
+        },
+        {
+          "set_id": 6,
+          "gear_id": 35,
+          "placement_id": 12,
+          "is_packed": 0,
+          "sort_order": 1
+        },
+        {
+          "set_id": 6,
+          "gear_id": 38,
+          "placement_id": 12,
+          "is_packed": 0,
+          "sort_order": 2
+        },
+        {
+          "set_id": 6,
+          "gear_id": 40,
+          "placement_id": 12,
+          "is_packed": 0,
+          "sort_order": 3
+        },
+        {
+          "set_id": 6,
+          "gear_id": 39,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "setId": 7,
+      "items": [
+        {
+          "set_id": 7,
+          "gear_id": 4,
+          "placement_id": 11,
+          "is_packed": 0,
+          "sort_order": 0
+        },
+        {
+          "set_id": 7,
+          "gear_id": 24,
+          "placement_id": 11,
+          "is_packed": 0,
+          "sort_order": 2
+        },
+        {
+          "set_id": 7,
+          "gear_id": 21,
+          "placement_id": 11,
+          "is_packed": 0,
+          "sort_order": 3
+        },
+        {
+          "set_id": 7,
+          "gear_id": 32,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 4
+        },
+        {
+          "set_id": 7,
+          "gear_id": 7,
+          "placement_id": 11,
+          "is_packed": 0,
+          "sort_order": 5
+        },
+        {
+          "set_id": 7,
+          "gear_id": 3,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 6
+        },
+        {
+          "set_id": 7,
+          "gear_id": 31,
+          "placement_id": 11,
+          "is_packed": 0,
+          "sort_order": 7
+        },
+        {
+          "set_id": 7,
+          "gear_id": 13,
+          "placement_id": 10,
+          "is_packed": 0,
+          "sort_order": 8
+        },
+        {
+          "set_id": 7,
+          "gear_id": 34,
+          "placement_id": 10,
+          "is_packed": 0,
+          "sort_order": 9
+        }
+      ]
+    },
+    {
+      "setId": 3,
+      "items": [
+        {
+          "set_id": 3,
+          "gear_id": 2,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 0
+        },
+        {
+          "set_id": 3,
+          "gear_id": 4,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "setId": 2,
+      "items": [
+        {
+          "set_id": 2,
+          "gear_id": 2,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 0
+        },
+        {
+          "set_id": 2,
+          "gear_id": 3,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "setId": 1,
+      "items": [
+        {
+          "set_id": 1,
+          "gear_id": 5,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 0
+        },
+        {
+          "set_id": 1,
+          "gear_id": 2,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 1
+        },
+        {
+          "set_id": 1,
+          "gear_id": 3,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 2
+        },
+        {
+          "set_id": 1,
+          "gear_id": 4,
+          "placement_id": null,
+          "is_packed": 0,
+          "sort_order": 3
+        }
+      ]
+    }
+  ]
+}

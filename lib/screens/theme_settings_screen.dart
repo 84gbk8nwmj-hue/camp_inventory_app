@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_theme_provider.dart';
 import '../theme/app_color_theme.dart';
+import 'privacy_policy_screen.dart';
 
 class ThemeSettingsScreen extends ConsumerWidget {
   const ThemeSettingsScreen({super.key});
@@ -12,7 +13,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
     final current = ref.watch(appThemeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('背景テーマ')),
+      appBar: AppBar(title: const Text('設定')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -41,6 +42,31 @@ class ThemeSettingsScreen extends ConsumerWidget {
               ),
             );
           }),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          ListTile(
+            title: const Text('プライバシーポリシー'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const PrivacyPolicyScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('オープンソースライセンス'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              showLicensePage(
+                context: context,
+                applicationName: 'キャンプ持ち出しリスト',
+                applicationVersion: '1.0.0',
+              );
+            },
+          ),
         ],
       ),
     );

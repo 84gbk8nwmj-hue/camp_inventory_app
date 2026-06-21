@@ -151,6 +151,33 @@ class GearReorderableList extends ConsumerWidget {
   }
 
   Widget _buildTile(BuildContext context, Gear gear, int index, bool isChild) {
+    // 境界線と総重量の判定
+    bool isGroupStart = false;
+    bool isGroupEnd = false;
+    double? groupTotalWeight;
+
+    // 親ギア（グループの開始）の判定
+    final children = items.where((g) => g.parentId == gear.id).toList();
+    if (children.isNotEmpty) {
+      isGroupStart = true;
+      // グループ総重量の計算（親 + 全ての子孫）
+      groupTotalWeight = _calculateSubtreeWeight(gear);
+    }
+
+    // グループの終了判定（最後の子ギア）
+    if (isChild) {
+      final isLastItem = index == items.length - 1;
+      if (isLastItem) {
+        isGroupEnd = true;
+      } else {
+        final nextItem = items[index + 1];
+        // 次のアイテムが同じ親を持たない、かつ次のアイテムが自分の子でもない場合、グループ終了
+        if (nextItem.parentId != gear.parentId && nextItem.parentId != gear.id) {
+          isGroupEnd = true;
+        }
+      }
+    }
+
     // ReorderableListView ではハンドルが自動で付く場合もあるが、
     // GearListRowLeading 内でカスタムハンドルを表示するように設定されている
     final leading = GearListRowLeading(
@@ -167,6 +194,9 @@ class GearReorderableList extends ConsumerWidget {
     Widget tile = GearInventoryListTile(
       gear: gear,
       leading: leading,
+      isGroupStart: isGroupStart,
+      isGroupEnd: isGroupEnd,
+      groupTotalWeight: groupTotalWeight,
       onTap: () {
         Navigator.push(
           context,
@@ -187,7 +217,10 @@ class GearReorderableList extends ConsumerWidget {
     if (isChild) {
       tile = Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -196,6 +229,15 @@ class GearReorderableList extends ConsumerWidget {
     }
 
     return tile;
+  }
+
+  double _calculateSubtreeWeight(Gear parent) {
+    double total = (parent.weight ?? 0) * parent.quantity;
+    final children = items.where((g) => g.parentId == parent.id);
+    for (final child in children) {
+      total += _calculateSubtreeWeight(child);
+    }
+    return total;
   }
 }
 

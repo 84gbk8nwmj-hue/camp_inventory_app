@@ -193,44 +193,66 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
 
           return Stack(
             children: [
-              categories.items.isEmpty
-                  ? const Center(child: Text('カテゴリがありません'))
-                  : Expanded(
-                      child: SafeArea(
-                        top: false,
-                        left: false,
-                        right: false,
-                        bottom: true,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          itemCount: categories.items.length,
-                          itemBuilder: (context, index) {
-                            final c = categories.items[index];
-                            return Material(
-                              key: ValueKey('category_${c.id}'),
-                              color: Theme.of(context).colorScheme.surface,
-                              child: ListTile(
-                                title: Text(c.name),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit),
-                                      onPressed: () => _renameCategory(c),
-                                    ),
-                                    IconButton(
-                                      icon:
-                                          const Icon(Icons.delete_outline),
-                                      onPressed: () => _deleteCategory(c),
-                                    ),
-                                  ],
-                                ),
+              if (categories.items.isEmpty)
+                const Center(child: Text('カテゴリがありません'))
+              else
+                SafeArea(
+                  top: false,
+                  left: false,
+                  right: false,
+                  bottom: true,
+                  child: ReorderableListView.builder(
+                    onReorder: (oldIndex, newIndex) {
+                      final items = [...categories.items];
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
+                      }
+                      final item = items.removeAt(oldIndex);
+                      items.insert(newIndex, item);
+                      categoryNotifier.reorderItems(
+                        items.map((e) => e.id!).toList(),
+                      );
+                    },
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: categories.items.length,
+                    itemBuilder: (context, index) {
+                      final c = categories.items[index];
+                      return Material(
+                        key: ValueKey('category_${c.id}'),
+                        color: Theme.of(context).colorScheme.surface,
+                        child: ListTile(
+                          leading: ReorderableDragStartListener(
+                            index: index,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Icon(
+                                Icons.menu,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.5),
                               ),
-                            );
-                          },
+                            ),
+                          ),
+                          title: Text(c.name),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () => _renameCategory(c),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _deleteCategory(c),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
+                ),
               Positioned(
                 left: offset.dx,
                 top: offset.dy,

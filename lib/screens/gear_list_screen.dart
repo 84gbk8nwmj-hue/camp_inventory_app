@@ -6,7 +6,6 @@ import '../providers/category_provider.dart';
 import '../providers/data_transfer_provider.dart';
 import '../providers/database_providers.dart';
 import '../providers/gear_provider.dart';
-import '../providers/packing_provider.dart';
 import '../services/data_transfer_service.dart';
 import '../utils/weight_format.dart';
 import 'category_list_screen.dart';
@@ -87,16 +86,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     if (_transferring) return;
     setState(() => _transferring = true);
     try {
-      final gear = ref.read(gearProvider);
-      final categories = ref.read(categoryProvider);
-      final packing = ref.read(packingProvider);
-      final items = await ref.read(packingProvider.notifier).allSetItems();
-      await ref.read(dataTransferServiceProvider).shareBackupJson(
-            gear: gear.items,
-            categories: categories.items,
-            packingSets: packing.sets,
-            packingItemsBySet: items,
-          );
+      await ref.read(dataTransferServiceProvider).shareBackupJsonFromDatabase();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,16 +102,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     if (_transferring) return;
     setState(() => _transferring = true);
     try {
-      final gear = ref.read(gearProvider);
-      final categories = ref.read(categoryProvider);
-      final packing = ref.read(packingProvider);
-      final items = await ref.read(packingProvider.notifier).allSetItems();
-      await ref.read(dataTransferServiceProvider).shareBackupZip(
-            gear: gear.items,
-            categories: categories.items,
-            packingSets: packing.sets,
-            packingItemsBySet: items,
-          );
+      await ref.read(dataTransferServiceProvider).shareBackupZipFromDatabase();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -277,7 +258,8 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
             ListTile(
               leading: const Icon(Icons.palette_outlined),
               title: const Text('背景テーマ'),
-              subtitle: const Text('Army Green / Navy / Air Force Blue / Starlight'),
+              subtitle:
+                  const Text('Army Green / Navy / Air Force Blue / Starlight'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -311,8 +293,6 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     final items = gearState.displayItems(categories);
     final totalG = gearState.filteredTotalWeight(items);
     final weightLabel = WeightFormat.label(totalG);
-    final filterName = gearState.filterCategoryName(categories);
-    final weightTitle = filterName == null ? '積載合計重量' : '$filterNameの合計重量';
 
     final canReorder = gearState.sortOption == GearSortOption.manual &&
         gearState.searchQuery.trim().isEmpty &&
@@ -443,7 +423,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '$weightTitle：$weightLabel',
+                            'Total：$weightLabel',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -454,16 +434,16 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                                 ),
                           ),
                         ),
-                        if (gearState.hasActiveFilters)
-                          Text(
-                            '${items.length} 件',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onPrimaryContainer,
-                                    ),
-                          ),
+                        Text(
+                          'count：${items.length}',
+                          textAlign: TextAlign.right,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
+                                  ),
+                        ),
                       ],
                     ),
                   ),

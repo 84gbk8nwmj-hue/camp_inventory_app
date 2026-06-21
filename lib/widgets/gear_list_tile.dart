@@ -155,6 +155,9 @@ class GearInventoryListTile extends StatelessWidget {
   final Widget? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final bool isGroupStart;
+  final bool isGroupEnd;
+  final double? groupTotalWeight;
 
   const GearInventoryListTile({
     super.key,
@@ -165,33 +168,119 @@ class GearInventoryListTile extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.isGroupStart = false,
+    this.isGroupEnd = false,
+    this.groupTotalWeight,
   });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveLeading = leading ?? GearListRowLeading(gear: gear, reorderIndex: reorderIndex);
     final isChild = gear.parentId != null;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return ListTile(
-      contentPadding: GearListTileLayout.listContentPadding,
-      horizontalTitleGap: GearListTileLayout.titleGap,
-      minLeadingWidth: GearListTileLayout.leadingWidth(
-        withDrag: (reorderIndex != null || leading != null),
-        isChild: isChild,
-      ),
-      leading: effectiveLeading,
-      title: title ??
-          SizedBox(
+    final mfr = gear.manufacturer;
+    final prefix = mfr != null && mfr.isNotEmpty ? '$mfr · ' : '';
+    final label = '$prefix${gear.categoryName}';
+    final weightText = gear.weight == null
+        ? null
+        : WeightFormat.gramsCompact(gear.weight! * gear.quantity);
+    final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).textTheme.bodySmall?.color,
+        );
+
+    final showGroupTotal = groupTotalWeight != null &&
+        groupTotalWeight! > (gear.weight ?? 0) * gear.quantity;
+
+    final effectiveTitle = Row(
+      children: [
+        Expanded(
+          child: SizedBox(
             height: 20,
             child: AppMarqueeText(
               text: gear.name,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
-      subtitle: subtitle ?? GearWeightSubtitle(gear: gear),
+        ),
+        if (showGroupTotal) ...[
+          const SizedBox(width: 8),
+          Text(
+            WeightFormat.gramsCompact(groupTotalWeight!),
+            style: style?.copyWith(
+              color: colorScheme.primary,
+            ),
+          ),
+          // 下段のFIXアイコン(dotSize) + 間隔(6) 分のスペースを空けて桁を揃える
+          const SizedBox(width: GearListTileLayout.dotSize + 6),
+        ],
+      ],
+    );
+
+    final effectiveSubtitle = Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 18,
+            child: AppMarqueeText(
+              text: label,
+              style: style,
+            ),
+          ),
+        ),
+        if (weightText != null) ...[
+          const SizedBox(width: 8),
+          Text(
+            weightText,
+            style: style,
+          ),
+          const SizedBox(width: 6),
+          WeightStatusDot(gear: gear),
+        ],
+      ],
+    );
+
+    final effectiveLeading =
+        leading ?? GearListRowLeading(gear: gear, reorderIndex: reorderIndex);
+
+    final leadingWidth = GearListTileLayout.leadingWidth(
+      withDrag: (reorderIndex != null || leading != null),
+      isChild: isChild,
+    );
+
+    final indent = GearListTileLayout.listContentPadding.left +
+        leadingWidth +
+        GearListTileLayout.titleGap;
+
+    final divider = Divider(
+      height: 1,
+      thickness: 1,
+      indent: indent,
+      color: colorScheme.primary.withValues(alpha: 0.12),
+    );
+
+    Widget tile = ListTile(
+      contentPadding: GearListTileLayout.listContentPadding,
+      horizontalTitleGap: GearListTileLayout.titleGap,
+      minLeadingWidth: leadingWidth,
+      leading: effectiveLeading,
+      title: title ?? effectiveTitle,
+      subtitle: subtitle ?? effectiveSubtitle,
       trailing: trailing,
       onTap: onTap,
     );
+
+    if (isGroupStart || isGroupEnd || isChild) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isGroupStart) divider,
+          tile,
+          if (isGroupEnd) divider,
+        ],
+      );
+    }
+
+    return tile;
   }
 }
 
@@ -218,8 +307,13 @@ class AppMarqueeText extends StatelessWidget {
 
 class GearWeightSubtitle extends StatelessWidget {
   final Gear gear;
+  final double? groupTotalWeight;
 
-  const GearWeightSubtitle({super.key, required this.gear});
+  const GearWeightSubtitle({
+    super.key,
+    required this.gear,
+    this.groupTotalWeight,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -233,6 +327,9 @@ class GearWeightSubtitle extends StatelessWidget {
           color: Theme.of(context).textTheme.bodySmall?.color,
         );
 
+    final showGroupTotal = groupTotalWeight != null &&
+        groupTotalWeight! > (gear.weight ?? 0) * gear.quantity;
+
     return Row(
       children: [
         Expanded(
@@ -244,14 +341,33 @@ class GearWeightSubtitle extends StatelessWidget {
             ),
           ),
         ),
-        if (weight != null) ...[
+        if (weight != null || showGroupTotal) ...[
           const SizedBox(width: 8),
-          Text(
-            weight,
-            maxLines: 1,
-            overflow: TextOverflow.visible,
-            textAlign: TextAlign.right,
-            style: style,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showGroupTotal)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    WeightFormat.gramsCompact(groupTotalWeight!),
+                    style: style?.copyWith(
+                      fontSize: (style.fontSize ?? 12) + 1,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              if (weight != null)
+                Text(
+                  weight,
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
+                  textAlign: TextAlign.right,
+                  style: style,
+                ),
+            ],
           ),
           const SizedBox(width: 6),
           WeightStatusDot(gear: gear),
