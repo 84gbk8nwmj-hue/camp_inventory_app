@@ -13,7 +13,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.camp_inventory_app"
+    namespace = "com.gearbase.app"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.camp_inventory_app"
+        applicationId = "com.gearbase.app"
 
         minSdk = flutter.minSdkVersion
         targetSdk = 36
