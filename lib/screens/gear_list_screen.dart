@@ -486,7 +486,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '≡ をドラッグして並べ替え / 左右スワイプで格納・解除',
+                              '⋮⋮ をドラッグして並べ替え / 左右スワイプで格納・解除',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),

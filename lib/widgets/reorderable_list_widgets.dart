@@ -248,6 +248,6 @@ class DragHandle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
-    return Icon(Icons.menu, color: color);
+    return Icon(Icons.drag_indicator, color: color);
   }
 }

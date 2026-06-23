@@ -183,7 +183,7 @@ class _PackingChecklistScreenState
                         WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           child: Icon(
-                            Icons.menu,
+                            Icons.drag_indicator,
                             size: 16,
                             color: Colors.grey.shade600,
                           ),
@@ -506,7 +506,7 @@ class _DraggableGearTile extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(8, 12, 16, 12),
             color: Colors.transparent,
-            child: const Icon(Icons.menu, color: Colors.grey, size: 24),
+            child: const Icon(Icons.drag_indicator, color: Colors.grey, size: 24),
           ),
         ),
         GearListTileLeading(gear: view.gear),

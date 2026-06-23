@@ -226,7 +226,7 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Icon(
-                                Icons.menu,
+                                Icons.drag_indicator,
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
