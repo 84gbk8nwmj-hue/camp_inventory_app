@@ -31,4 +31,4 @@
 
 **8. お問い合わせ窓口**
 ご不明な点やご要望がございましたら、以下のメールアドレスまでご連絡ください。
-Email: amethyst.black.pearl@gmail.com
+Email: gearbase870@gmail.com
