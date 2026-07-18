@@ -12,6 +12,7 @@ import 'category_list_screen.dart';
 import 'gear_edit_screen.dart';
 import 'packing_sets_screen.dart';
 import 'theme_settings_screen.dart';
+import 'nearby_store_search_screen.dart'; // 追加
 
 class GearListScreen extends ConsumerStatefulWidget {
   const GearListScreen({super.key});
@@ -306,8 +307,21 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          IconButton(
+            tooltip: '近くのお店を探す',
+            icon: const Icon(Icons.store_mall_directory_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NearbyStoreSearchScreen(),
+                ),
+              );
+            },
+          ),
           PopupMenuButton<GearSortOption>(
             tooltip: '表示順',
+
             icon: const Icon(Icons.sort),
             initialValue: gearState.sortOption,
             onSelected: gearNotifier.setSortOption,
