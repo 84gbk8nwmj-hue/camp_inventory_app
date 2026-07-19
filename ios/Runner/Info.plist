@@ -72,5 +72,9 @@
 	<string>ギアの写真を撮影するためにカメラを使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ギアの写真を選択するためにライブラリを使用します。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>現在地周辺のキャンプ場やスーパー、薪販売店などを検索し、レーダー上に表示するために位置情報を使用します。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>現在地周辺のキャンプ場やスーパー、薪販売店などを検索し、レーダー上に表示するために位置情報を使用します。</string>
 </dict>
 </plist>

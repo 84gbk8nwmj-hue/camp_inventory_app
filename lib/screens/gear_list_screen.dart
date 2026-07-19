@@ -275,15 +275,18 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 16.0,
         title: const Text(
           'GEAR BASE',
           maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             tooltip: '近くのお店を探す',
-            icon: const Icon(Icons.store_mall_directory_outlined),
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.location_on_outlined),
             onPressed: () {
               Navigator.push(
                 context,
@@ -293,10 +296,39 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
               );
             },
           ),
+          IconButton(
+            tooltip: '持ち出しセット',
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.backpack_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PackingSetsScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'カテゴリ管理',
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.category_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CategoryListScreen(),
+                ),
+              );
+            },
+          ),
           PopupMenuButton<GearSortOption>(
             tooltip: '表示順',
-
             icon: const Icon(Icons.sort),
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            constraints: const BoxConstraints(),
             initialValue: gearState.sortOption,
             onSelected: gearNotifier.setSortOption,
             itemBuilder: (context) => GearSortOption.values
@@ -317,52 +349,88 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                 )
                 .toList(),
           ),
-          IconButton(
-            tooltip: 'データの入出力',
-            onPressed: _transferring ? null : _showDataMenu,
-            icon: _transferring
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.swap_vert),
-          ),
-          IconButton(
-            tooltip: '設定',
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ThemeSettingsScreen(),
-                ),
-              );
+          PopupMenuButton<String>(
+            tooltip: 'メニュー',
+            icon: const Icon(Icons.more_vert),
+            padding: const EdgeInsets.only(left: 4.0, right: 12.0),
+            constraints: const BoxConstraints(),
+            onSelected: (value) {
+              switch (value) {
+                case 'settings':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ThemeSettingsScreen(),
+                    ),
+                  );
+                  break;
+                case 'exportJson':
+                  _exportJson();
+                  break;
+                case 'exportZip':
+                  _exportZip();
+                  break;
+                case 'importJson':
+                  _importBackup(fromZip: false);
+                  break;
+                case 'importZip':
+                  _importBackup(fromZip: true);
+                  break;
+              }
             },
-          ),
-          IconButton(
-            tooltip: 'カテゴリ管理',
-            icon: const Icon(Icons.category_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CategoryListScreen(),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'exportJson',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload_file, size: 20),
+                    SizedBox(width: 12),
+                    Text('JSONエクスポート'),
+                  ],
                 ),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: '持ち出しセット',
-            icon: const Icon(Icons.backpack_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PackingSetsScreen(),
+              ),
+              const PopupMenuItem(
+                value: 'exportZip',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_zip, size: 20),
+                    SizedBox(width: 12),
+                    Text('ZIPエクスポート'),
+                  ],
                 ),
-              );
-            },
+              ),
+              const PopupMenuItem(
+                value: 'importJson',
+                child: Row(
+                  children: [
+                    Icon(Icons.download, size: 20),
+                    SizedBox(width: 12),
+                    Text('JSONインポート'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'importZip',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_zip_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('ZIPインポート'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings, size: 20),
+                    SizedBox(width: 12),
+                    Text('設定'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
