@@ -14,9 +14,12 @@
 *   `feature/nearby-store-search`ブランチの作成。
 *   `docs`ディレクトリの作成。
 *   `docs/WORK_HISTORY.md`、`docs/NEXT_TASK.md`、`docs/DESIGN_NOTES.md`の作成。
+*   「近くのお店を探す」ボタンを`GearListScreen`に追加。
+*   `NearbyStoreSearchScreen`を新規作成し、プレースホルダーを表示。
+*   `GearListScreen`から`NearbyStoreSearchScreen`への遷移を実装。
 
 ### 次にやること:
-*   「近くのお店検索」MVPの実装を開始する。
+*   「近くのお店検索」MVPの次のステップとして、現在地取得（ダミーでも可）の実装。
 
 ---
 

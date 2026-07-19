@@ -249,33 +249,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     );
   }
 
-  void _showSettingsMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('背景テーマ'),
-              subtitle:
-                  const Text('Army Green / Navy / Air Force Blue / Starlight'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ThemeSettingsScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   String _emptyMessage(GearState gear, List<dynamic> items) {
     if (gear.items.isEmpty) return 'まだギアが登録されていません';
@@ -357,7 +331,14 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
           IconButton(
             tooltip: '設定',
             icon: const Icon(Icons.settings),
-            onPressed: _showSettingsMenu,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ThemeSettingsScreen(),
+                ),
+              );
+            },
           ),
           IconButton(
             tooltip: 'カテゴリ管理',

@@ -45,7 +45,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
             _sectionTitle('8. お問い合わせ窓口'),
             _bodyText('ご不明な点やご要望がございましたら、以下のメールアドレスまでご連絡ください。'),
-            _bodyText('Email: amethyst.black.pearl@gmail.com'),
+            _bodyText('Email: gearbase870@gmail.com'),
             
             const SizedBox(height: 32),
           ],

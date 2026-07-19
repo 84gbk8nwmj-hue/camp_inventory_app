@@ -8,24 +8,45 @@ class AppTheme {
     final textTheme = AppTypography.textTheme(palette);
     final buttonLabel = AppTypography.buttonLabel(palette);
 
-    final colorScheme = ColorScheme.dark(
-      primary: palette.accent,
-      onPrimary: palette.onPrimary,
-      secondary: Color.alphaBlend(
-        palette.accent.withValues(alpha: 0.65),
-        palette.surface,
-      ),
-      onSecondary: palette.onSurfaceText,
-      surface: palette.surface,
-      onSurface: palette.onSurfaceText,
-      surfaceContainerHighest: palette.surfaceHigh,
-      primaryContainer: palette.primaryContainer,
-      onPrimaryContainer: palette.onPrimaryContainer,
-      secondaryContainer: palette.surfaceHigh,
-      onSecondaryContainer: palette.onSurfaceText,
-      error: const Color(0xFFCF6679),
-      onError: Colors.white,
-    );
+    final isDark = palette.brightness == Brightness.dark;
+
+    final colorScheme = isDark
+        ? ColorScheme.dark(
+            primary: palette.accent,
+            onPrimary: palette.onPrimary,
+            secondary: Color.alphaBlend(
+              palette.accent.withValues(alpha: 0.65),
+              palette.surface,
+            ),
+            onSecondary: palette.onSurfaceText,
+            surface: palette.surface,
+            onSurface: palette.onSurfaceText,
+            surfaceContainerHighest: palette.surfaceHigh,
+            primaryContainer: palette.primaryContainer,
+            onPrimaryContainer: palette.onPrimaryContainer,
+            secondaryContainer: palette.surfaceHigh,
+            onSecondaryContainer: palette.onSurfaceText,
+            error: const Color(0xFFCF6679),
+            onError: Colors.white,
+          )
+        : ColorScheme.light(
+            primary: palette.accent,
+            onPrimary: palette.onPrimary,
+            secondary: Color.alphaBlend(
+              palette.accent.withValues(alpha: 0.65),
+              palette.surface,
+            ),
+            onSecondary: palette.onSurfaceText,
+            surface: palette.surface,
+            onSurface: palette.onSurfaceText,
+            surfaceContainerHighest: palette.surfaceHigh,
+            primaryContainer: palette.primaryContainer,
+            onPrimaryContainer: palette.onPrimaryContainer,
+            secondaryContainer: palette.surfaceHigh,
+            onSecondaryContainer: palette.onSurfaceText,
+            error: const Color(0xFFB00020),
+            onError: Colors.white,
+          );
 
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(6),
@@ -33,7 +54,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: palette.brightness,
       colorScheme: colorScheme,
       textTheme: textTheme,
       primaryTextTheme: textTheme,
