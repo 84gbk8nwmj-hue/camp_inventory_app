@@ -1,17 +1,37 @@
-# camp_inventory_app
+# GEAR BASE
 
-A new Flutter project.
+GEAR BASE is a Flutter application for managing camping gear.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Gear management
+- Categories
+- Packing sets
+- Nearby camping store search
+- Theme customization
+- Import / Export (JSON / ZIP)
 
-A few resources to get you started if this is your first Flutter project:
+## Tech Stack
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter
+- Riverpod
+- SQLite
+- Geolocator
+- Overpass API
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Development
+
+Development rules are documented in AGENTS.md.
+
+All AI coding agents should follow AGENTS.md before making changes.
+
+## Current Status
+
+MVP under active development.
+
+Current priority:
+Complete the MVP while maintaining stability.
+
+## License
+
+Private project.

@@ -1,18 +1,47 @@
-# 次のタスク (GEAR BASE MVP)
+# NEXT TASK (GEAR BASE)
 
-このファイルは、OpenCodeが現在の開発状況を素早く把握し、次の作業にスムーズに移行するための情報を提供します。
-
----
-
-## 現在
-- 「近くのお店検索」MVP機能の実装中。UIフローの骨子が確立。
-
-## 次にやること
-- 現在地取得（ダミーでも可）の実装。
-
-## 完了
-- なし
+This document tracks the current development status.
 
 ---
 
-<!-- 今後の開発の進捗に合わせて、このファイルを適宜更新していきます。-->
+# Current Status
+
+MVP is under active development.
+
+Completed:
+
+- Sakura theme
+- Sand Beige theme
+- Theme brightness support
+- Nearby store search screen
+- Radar-style search UI
+- Current location acquisition
+- Overpass API integration
+- Search range switching (2km / 5km / 10km)
+- Android release build
+- Draggable FAB position adjustment
+
+---
+
+# Current Issues
+
+- Overpass API occasionally returns HTTP 504.
+- Search result reliability needs improvement.
+- Google Maps navigation has not been implemented yet.
+
+---
+
+# Next Priority
+
+1. Open Google Maps when a search result is tapped.
+2. Improve Overpass API error handling and retry logic.
+3. Consider caching search results.
+
+---
+
+# Notes
+
+- MVP First.
+- Keep changes minimal.
+- No refactoring.
+- Do not change existing UI without permission.
