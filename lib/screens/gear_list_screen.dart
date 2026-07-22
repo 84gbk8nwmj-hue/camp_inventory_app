@@ -69,7 +69,8 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
 
   Offset _clampFabOffset(Offset offset, Size size) {
     final maxX = size.width - _fabSize - _fabMargin;
-    final maxY = size.height - _fabSize - _fabMargin;
+    final maxY = size.height - _fabSize - _fabMargin - 64;
+
     return Offset(
       offset.dx.clamp(_fabMargin, maxX).toDouble(),
       offset.dy.clamp(_fabMargin, maxY).toDouble(),
