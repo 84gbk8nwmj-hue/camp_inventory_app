@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 // 周辺スポットのカテゴリ定義
 enum SpotCategory {
@@ -21,6 +22,8 @@ class NearbySpot {
   final double angleDegrees; // 現在地からの方角 (0 = 北, 90 = 東, 180 = 南, 270 = 西)
   final String description;
   final String businessHours;
+  final double latitude;
+  final double longitude;
 
   NearbySpot({
     required this.id,
@@ -30,6 +33,8 @@ class NearbySpot {
     required this.angleDegrees,
     required this.description,
     required this.businessHours,
+    required this.latitude,
+    required this.longitude,
   });
 
   IconData get icon {
@@ -75,7 +80,7 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen>
   bool _showErrorBanner = false;
   SpotCategory _selectedCategory = SpotCategory.firewood;
   NearbySpot? _selectedSpot;
-  double _maxDistanceKm = 10.0; // レーダーの最大表示距離
+  double _maxDistanceKm = 2.0; // レーダーの最大表示距離（初期値を2.0kmに変更）
 
   late AnimationController _radarAnimationController;
   final List<NearbySpot> _allSpots = [];
@@ -107,10 +112,12 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen>
     
     _allSpots.clear();
 
-    const double radiusMeters = 10000;
+    // 最大探索半径を現在の選択距離に合わせて動的に変更（初期は2km = 2000mとなり負荷軽減）
+    final double radiusMeters = _maxDistanceKm * 1000;
 
+    // Overpass QLクエリ (タイムアウト設定を60秒に変更)
     final query = '''
-[out:json][timeout:30];
+[out:json][timeout:60];
 (
   node["shop"="supermarket"](around:$radiusMeters, $lat, $lng);
   way["shop"="supermarket"](around:$radiusMeters, $lat, $lng);
@@ -130,7 +137,9 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen>
 out center;
 ''';
 
+    debugPrint('Overpass API: リクエスト送信準備中... (lat: $lat, lng: $lng, 半径: $radiusMeters m)');
     try {
+      debugPrint('Overpass API: POST送信直前 - URL: https://overpass-api.de/api/interpreter');
       final response = await http.post(
         Uri.parse('https://overpass-api.de/api/interpreter'),
         headers: {
@@ -139,7 +148,8 @@ out center;
           'Accept': 'application/json',
         },
         body: {'data': query},
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(const Duration(seconds: 70)); // クエリタイムアウト(60秒)に合わせて通信タイムアウトを70秒に延長
+      debugPrint('Overpass API: レスポンス受信成功 - ステータスコード: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -199,12 +209,25 @@ out center;
             angleDegrees: bearing,
             description: description,
             businessHours: businessHours,
+            latitude: spotLat,
+            longitude: spotLng,
           ));
         }
       } else {
-        throw Exception('Overpass API returned status code ${response.statusCode}');
+        if (response.statusCode == 504) {
+          throw Exception('サーバーが混雑しています。しばらくしてから再試行してください。');
+        } else {
+          throw Exception('Overpass API returned status code ${response.statusCode}');
+        }
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Overpass API: エラーが発生しました: $e');
+      debugPrint('Overpass API: スタックトレース:\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('データ取得失敗: $e')),
+        );
+      }
       setState(() {
         _locationError = 'データ取得失敗: $e';
         _showErrorBanner = true;
@@ -280,6 +303,8 @@ out center;
         angleDegrees: bearing,
         description: temp['description'] as String,
         businessHours: temp['businessHours'] as String,
+        latitude: spotLat,
+        longitude: spotLng,
       ));
     }
   }
@@ -347,15 +372,24 @@ out center;
         return;
       }
 
+      debugPrint('Geolocator: 現在地取得を開始します。');
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+      debugPrint('Geolocator: 現在地取得成功 (lat: ${position.latitude}, lng: ${position.longitude})');
       setState(() {
         _currentPosition = position;
         _showErrorBanner = false;
       });
       await _fetchNearbySpotsFromOSM(position.latitude, position.longitude);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Geolocator: エラーが発生しました: $e');
+      debugPrint('Geolocator: スタックトレース:\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('データ取得失敗: $e')),
+        );
+      }
       setState(() {
         _isLoadingLocation = false;
         _locationError = '現在地の取得中にエラーが発生しました: $e';
@@ -554,92 +588,115 @@ out center;
                         final isSelected = _selectedSpot?.id == spot.id;
 
                         return InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedSpot = spot;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? spot.color.withOpacity(0.15)
-                                  : Colors.grey[900],
-                              border: Border.all(
-                                color: isSelected ? spot.color : Colors.transparent,
-                                width: 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: spot.color.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      )
-                                    ]
-                                  : [],
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: spot.color.withOpacity(0.2),
-                                  child: Icon(spot.icon, color: spot.color),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              spot.name,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '${spot.distanceKm.toStringAsFixed(1)} km',
-                                            style: TextStyle(
-                                              color: spot.color,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        spot.description,
-                                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            spot.businessHours,
-                                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
+                            onTap: () {
+                              setState(() {
+                                _selectedSpot = spot;
+                              });
+                            },
+                           child: AnimatedContainer(
+                             duration: const Duration(milliseconds: 300),
+                             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                             padding: const EdgeInsets.all(12),
+                             decoration: BoxDecoration(
+                               color: isSelected
+                                   ? spot.color.withOpacity(0.15)
+                                   : Colors.grey[900],
+                               border: Border.all(
+                                 color: isSelected ? spot.color : Colors.transparent,
+                                 width: 1.5,
+                               ),
+                               borderRadius: BorderRadius.circular(10),
+                               boxShadow: isSelected
+                                   ? [
+                                       BoxShadow(
+                                         color: spot.color.withOpacity(0.3),
+                                         blurRadius: 8,
+                                         spreadRadius: 1,
+                                       )
+                                     ]
+                                   : [],
+                             ),
+                             child: Column( // Main Column
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Row( // Top Row: Icon, Name, Distance
+                                   children: [
+                                     CircleAvatar(
+                                       backgroundColor: spot.color.withOpacity(0.2),
+                                       child: Icon(spot.icon, color: spot.color),
+                                     ),
+                                     const SizedBox(width: 12),
+                                     Expanded(
+                                       child: Column( // Middle Column: Name/Distance, Description, Hours
+                                         crossAxisAlignment: CrossAxisAlignment.start,
+                                         children: [
+                                           Row( // Name and Distance Row
+                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                             children: [
+                                               Expanded(
+                                                 child: Text(
+                                                   spot.name,
+                                                   style: const TextStyle(
+                                                     color: Colors.white,
+                                                     fontSize: 16,
+                                                     fontWeight: FontWeight.bold,
+                                                   ),
+                                                   overflow: TextOverflow.ellipsis,
+                                                 ),
+                                               ),
+                                               const SizedBox(width: 8),
+                                               Text(
+                                                 '${spot.distanceKm.toStringAsFixed(1)} km',
+                                                 style: TextStyle(
+                                                   color: spot.color,
+                                                   fontWeight: FontWeight.bold,
+                                                 ),
+                                               ),
+                                             ],
+                                           ),
+                                           const SizedBox(height: 4),
+                                           Text(
+                                             spot.description,
+                                             style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                                           ),
+                                           const SizedBox(height: 4),
+                                           Row( // Hours Row
+                                             children: [
+                                               Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                                               const SizedBox(width: 4),
+                                               Text(
+                                                 spot.businessHours,
+                                                 style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                               ),
+                                             ],
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                   ],
+                                 ),
+                                 if (isSelected) // Navigation Button
+                                   Padding(
+                                     padding: const EdgeInsets.only(top: 8.0),
+                                     child: FilledButton.icon(
+                                       onPressed: () {
+                                         if (_selectedSpot != null) {
+                                           _launchGoogleMaps(_selectedSpot!); // 選択中のスポットでナビ開始
+                                         }
+                                       },
+                                       icon: const Icon(Icons.navigation, size: 18),
+                                       label: const Text('ナビ開始'),
+                                       style: FilledButton.styleFrom(
+                                         backgroundColor: spot.color,
+                                         foregroundColor: Colors.black,
+                                         textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                       ),
+                                     ),
+                                   ),
+                               ],
+                             ),
+                           ));
                       },
                     ),
             ),
@@ -647,6 +704,48 @@ out center;
         ],
       ),
     );
+  }
+
+  // Google Mapsでナビを開始するメソッド
+  Future<void> _launchGoogleMaps(NearbySpot spot) async {
+    final String navUrl =
+        'google.navigation:q=${spot.latitude},${spot.longitude}';
+    final String webUrl =
+        'https://www.google.com/maps/dir/?api=1&destination=${spot.latitude},${spot.longitude}';
+
+    try {
+      // Androidの場合、google.navigationを優先して試行
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        if (await url_launcher.launchUrl(
+          Uri.parse(navUrl),
+          mode: url_launcher.LaunchMode.externalApplication,
+        )) {
+          return;
+        }
+      }
+
+      // google.navigationが失敗した場合、またはAndroid以外の場合、Web版を試行
+      if (await url_launcher.launchUrl(
+        Uri.parse(webUrl),
+        mode: url_launcher.LaunchMode.externalApplication,
+      )) {
+        return;
+      }
+
+      // どちらも失敗した場合
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: const Text('Googleマップを起動できませんでした。')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Google Maps起動エラー: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Googleマップの起動中にエラーが発生しました: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildCategoryButton(SpotCategory category, String label, IconData icon) {

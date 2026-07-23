@@ -38,7 +38,7 @@ Never sacrifice stability for unnecessary improvements.
 
 Before making any changes:
 
-- Read related files.
+- Read only the files related to the task.
 - Search for existing implementations.
 - Understand current behavior.
 - Identify the minimum required changes.
@@ -52,6 +52,8 @@ Never start implementing based on assumptions.
 - Make the smallest possible change.
 - Respect the existing code style.
 - Reuse existing code whenever possible.
+- Replace an entire function instead of inserting complex logic into the middle of existing control flow.
+- Do not leave duplicated code after editing.
 - Do not rename files without permission.
 - Do not move files without permission.
 - Do not add unnecessary dependencies.
@@ -107,14 +109,27 @@ Always wait for user confirmation.
 
 ---
 
+# Token Efficiency
+
+- Read only the files required for the task.
+- Read only the relevant functions or code blocks when possible.
+- Do not reread files unless necessary.
+- Keep the edit scope as small as possible.
+- Avoid unnecessary searches.
+
+---
+
 # Verification
 
 After implementation:
 
-1. Run flutter analyze.
-2. Fix compile errors.
-3. Report remaining warnings if any.
-4. Do not ignore build failures.
+1. Run `flutter analyze`.
+2. If Android code or Android UI changed, run `flutter build apk --release`.
+3. Fix all compile and build errors.
+4. Report any remaining warnings.
+5. Do not report completion until verification succeeds.
+6. Never claim verification succeeded unless it actually did.
+7. Wait for the user's instruction before committing.
 
 ---
 
@@ -173,6 +188,7 @@ At the end of every task, report:
 ## Verification
 
 - flutter analyze result
+- flutter build result (if executed)
 
 ## Remaining issues
 
@@ -188,6 +204,8 @@ At the end of every task, report:
 - Preserve the rugged camping atmosphere of the application.
 - Avoid unnecessary code churn.
 
+---
+
 # Response Language
 
 Always communicate with the user in Japanese.
@@ -196,6 +214,8 @@ Explain your reasoning, summaries, reports, and error messages in Japanese unles
 
 Source code, comments, commit messages, and documentation should follow the language already used in the project.
 
+---
+
 # Communication Style
 
 - Always communicate with the user in Japanese.
@@ -203,3 +223,47 @@ Source code, comments, commit messages, and documentation should follow the lang
 - Do not use excessive apologies.
 - If uncertain, ask before implementing.
 - Never pretend something was verified if it was not.
+
+
+## Debugging Rules
+
+### Analyze First
+- Always run `flutter analyze` (or `dart analyze`) before making any fix.
+- Read the full error message before determining the cause.
+- Never guess the cause of an error without verifying the analyzer output.
+
+### One Fix Per Cycle
+- Apply only one logical fix at a time.
+- Follow the cycle: Analyze → Fix → Analyze.
+- Do not make multiple unrelated changes in a single debugging step.
+
+### Preserve Existing Code
+- Modify only the code required to fix the reported issue.
+- Never duplicate existing code when editing.
+- After editing, verify that removed code was actually removed and not accidentally duplicated.
+
+### Verify After Editing
+- Re-read the edited section before continuing.
+- Confirm there are no duplicated widgets, arguments, methods, or blocks.
+- Ensure that edits have not introduced syntax errors or changed unrelated behavior.
+
+### If the Error Persists
+- Do not repeat the same fix multiple times.
+- Re-run `flutter analyze` and base the next action on the new analyzer output.
+- Explain the actual error before attempting another fix.
+- If the same issue cannot be resolved after two attempts, stop making changes and report the current analyzer output instead of guessing.
+
+### Completion Criteria
+- Do not report the issue as fixed unless `flutter analyze` reports:
+  ```
+  No issues found!
+  ```
+- If any errors remain, clearly state that the fix is incomplete and provide the remaining analyzer output.
+
+### Widget Tree Verification
+- For Flutter syntax errors, trace the widget tree from the opening widget to the corresponding closing widget.
+- Do not count parentheses alone. Verify which widget each closing parenthesis belongs to.
+- When adding or removing `)`, explicitly identify which widget is being closed.
+- Do not determine the cause of a syntax error based only on the reported line number.
+- Before editing, verify the complete widget hierarchy around the reported error.
+- If the widget hierarchy cannot be confidently determined, stop and report the uncertainty instead of guessing.
