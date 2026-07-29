@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:croppy/croppy.dart';
 
+import '../models/gear.dart';
+
 import '../models/packing_set.dart';
 import '../providers/database_providers.dart';
 import '../providers/gear_provider.dart';
@@ -205,6 +207,7 @@ class _PackingChecklistScreenState
                       return _DraggableGearTile(
                         view: view,
                         placementName: pName,
+                        showParentSelector: _showParentSelector,
                       );
                     },
                   ),
@@ -368,6 +371,86 @@ class _PackingChecklistScreenState
       );
     }
   }
+
+  Future<void> _showParentSelector(BuildContext context, Gear gear) async {
+    final gearNotifier = ref.read(gearProvider.notifier);
+    final allCandidates = gearNotifier.getParentCandidates(gear.id!);
+
+    // 現在アクティブな持ち出しセットに含まれるギアのIDを取得
+    final packing = ref.read(packingProvider);
+    final activeSetGearIds = packing.viewsFor(ref.read(gearProvider).items).map((e) => e.gear.id).toSet();
+
+    // 全ての候補から、現在アクティブな持ち出しセットに含まれるギアのみをフィルタリング
+    final candidates = allCandidates.where((g) => activeSetGearIds.contains(g.id)).toList();
+    
+    final currentParentId = gear.parentId;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    '格納先を選択: ${gear.name}',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: candidates.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return ListTile(
+                          leading: const SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: Icon(Icons.not_interested),
+                          ),
+                          title: const Text('解除（親なし）'),
+                          selected: currentParentId == null,
+                          onTap: () {
+                            gearNotifier.updateParent(gear.id!, null);
+                            Navigator.pop(context);
+                          },
+                        );
+                      }
+                      final candidate = candidates[index - 1];
+                      return ListTile(
+                        leading: SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: GearListTileLeading(gear: candidate),
+                        ),
+                        title: Text(candidate.name),
+                        subtitle: Text(candidate.categoryName),
+                        selected: currentParentId == candidate.id,
+                        onTap: () {
+                          gearNotifier.updateParent(gear.id!, candidate.id);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _PlacementDropZone extends ConsumerWidget {
@@ -472,17 +555,19 @@ class _PlacementDropZone extends ConsumerWidget {
   }
 }
 
-class _DraggableGearTile extends StatelessWidget {
+class _DraggableGearTile extends ConsumerWidget {
   final PackingGearView view;
   final String? placementName;
+  final Function(BuildContext, Gear) showParentSelector;
 
   const _DraggableGearTile({
     required this.view,
     this.placementName,
+    required this.showParentSelector,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isChild = view.gear.parentId != null;
     final customLeading = Row(
       mainAxisSize: MainAxisSize.min,
@@ -542,30 +627,53 @@ class _DraggableGearTile extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
         child: tile,
       );
-      tile = Consumer(
-        builder: (context, ref, child) {
-          return Dismissible(
-            key: ValueKey('dismiss_packing_${view.gear.id}'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              color: Theme.of(context).colorScheme.tertiary,
-              child: const Icon(Icons.outbox, color: Colors.white),
-            ),
-            confirmDismiss: (direction) async {
-              if (direction == DismissDirection.endToStart) {
-                await ref.read(gearProvider.notifier).updateParent(view.gear.id!, null);
-                return false;
-              }
-              return false;
-            },
-            child: child!,
-          );
-        },
-        child: tile,
-      );
     }
+
+    tile = Consumer(
+      builder: (context, ref, child) {
+        return Dismissible(
+          key: ValueKey('dismiss_packing_${view.gear.id}'),
+          direction: DismissDirection.horizontal, // 両方向スワイプを許可
+          background: Container(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20),
+            child: Row(
+              children: [
+                Icon(Icons.account_tree, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('格納先を選択', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          secondaryBackground: Container(
+            color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('解除', style: TextStyle(color: Theme.of(context).colorScheme.tertiary, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Icon(Icons.outbox, color: Theme.of(context).colorScheme.tertiary),
+              ],
+            ),
+          ),
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.startToEnd) {
+              // 右スワイプ: 格納先の選択
+              await showParentSelector(context, view.gear);
+            } else if (direction == DismissDirection.endToStart) {
+              // 左スワイプ: 解除
+              await ref.read(gearProvider.notifier).unnestItem(view.gear.id!);
+            }
+            return false; // 実際にはリストから削除しない
+          },
+          child: child!,
+        );
+      },
+      child: tile,
+    );
 
     return tile;
   }
