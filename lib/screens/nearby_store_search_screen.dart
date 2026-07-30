@@ -114,9 +114,9 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
       debugPrint('現在地取得成功 (lat: ${_currentPosition?.latitude}, lng: ${_currentPosition?.longitude})');
-    } catch (e) {
-      debugPrint('現在地取得エラー: $e');
-      _showSnackBar('現在地の取得中にエラーが発生しました: $e');
+    } catch (e, stack) {
+      debugPrint('現在地取得エラー: $e\n$stack');
+      _showSnackBar('現在地の取得中にエラーが発生しました。'); // 詳細なエラーメッセージはログに出力し、ユーザーには一般的なメッセージを表示
     }
   }
 
@@ -130,28 +130,35 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
   }
 
   Future<void> _launchGoogleMapsSearch(String searchWord) async {
+    String searchUrl;
+    String snackBarMessage;
+
     if (_currentPosition == null) {
-      _showSnackBar('現在地が取得できませんでした。');
-      await _determinePosition(); // 現在地を再取得
-      return;
+      snackBarMessage = '現在地が取得できませんでした。キーワードで検索します。';
+      // 現在地がない場合は、キーワードのみで検索するURLを生成
+      searchUrl = 'https://www.google.com/maps/search/?api=1&query=$searchWord';
+    } else {
+      snackBarMessage = 'Googleマップを起動します。'; // 通常成功時のメッセージ
+      final String lat = _currentPosition!.latitude.toString();
+      final String lng = _currentPosition!.longitude.toString();
+      // 現在地がある場合は、現在地周辺でキーワード検索するURLを生成
+      searchUrl = 'https://www.google.com/maps/search/?api=1&query=$searchWord&query_place_id=&center=$lat,$lng';
     }
+    
+    _showSnackBar(snackBarMessage); // ユーザーに検索モードを伝える
 
-    final String lat = _currentPosition!.latitude.toString();
-    final String lng = _currentPosition!.longitude.toString();
-
-    // Google Mapsアプリを優先して開くURIスキーム
-    final String googleMapsUrl = 'comgooglemaps://?q=$searchWord&center=$lat,$lng';
-    // ブラウザ版Google MapsのURL
-    final String webUrl = 'https://www.google.com/maps/search/?api=1&query=$searchWord&query_place_id=&center=$lat,$lng';
-
+    debugPrint('Generated searchUrl: $searchUrl');
     try {
-      if (await url_launcher.canLaunchUrl(Uri.parse(googleMapsUrl))) {
-        await url_launcher.launchUrl(Uri.parse(googleMapsUrl), mode: url_launcher.LaunchMode.externalApplication);
-      } else if (await url_launcher.canLaunchUrl(Uri.parse(webUrl))) {
-        await url_launcher.launchUrl(Uri.parse(webUrl), mode: url_launcher.LaunchMode.externalApplication);
-      } else {
-        _showSnackBar('Googleマップを起動できませんでした。');
-      }
+      final uri = Uri.parse(searchUrl);
+      final canLaunch = await url_launcher.canLaunchUrl(uri);
+      debugPrint('canLaunchUrl($searchUrl): $canLaunch');
+
+      // canLaunchUrlのチェックを一時的にスキップして、直接 launchUrl を試す
+      // if (canLaunch) { // causes linting errors. Remove this comment after debugging
+        await url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication);
+      // } else { // causes linting errors. Remove this comment after debugging
+      //   _showSnackBar('Googleマップを起動できませんでした。'); // causes linting errors. Remove this comment after debugging
+      // } // causes linting errors. Remove this comment after debugging
     } catch (e) {
       debugPrint('Google Maps起動エラー: $e');
       _showSnackBar('Googleマップの起動中にエラーが発生しました: $e');
