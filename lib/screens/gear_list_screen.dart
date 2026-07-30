@@ -30,6 +30,8 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
   bool _transferring = false;
   Offset? _fabOffset;
   bool _fabDragging = false;
+  Offset? _startFabOffset; // 追加
+  Offset? _startGlobalPosition; // 追加
 
   @override
   void initState() {
@@ -67,13 +69,20 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
         );
   }
 
-  Offset _clampFabOffset(Offset offset, Size size) {
-    final maxX = size.width - _fabSize - _fabMargin;
-    final maxY = size.height - _fabSize - _fabMargin - 50;
+  Offset _clampFabOffset(Offset offset, Size size, EdgeInsets viewPadding) {
+    // FABが表示されうる最小のY座標 (AppBarの下より少し上まで許容)
+    final minY = viewPadding.top + kToolbarHeight - (_fabSize / 2);
+    // FABが表示されうる最大のY座標 (NavigationBarの上より少し下まで許容)
+    final maxY = size.height - viewPadding.bottom - (_fabSize / 2);
+
+    // FABが表示されうる最小のX座標 (画面左端より少し左まで許容)
+    final minX = -(_fabSize / 2);
+    // FABが表示されうる最大のX座標 (画面右端より少し右まで許容)
+    final maxX = size.width - (_fabSize / 2);
 
     return Offset(
-      offset.dx.clamp(_fabMargin, maxX).toDouble(),
-      offset.dy.clamp(_fabMargin, maxY).toDouble(),
+      offset.dx.clamp(minX, maxX).toDouble(),
+      offset.dy.clamp(minY, maxY).toDouble(),
     );
   }
 
@@ -438,13 +447,16 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
+          final viewPadding = MediaQuery.of(context).padding;
+          // FABの初期位置をSafeAreaとFABのサイズを考慮して設定
+          final defaultFabOffset = Offset(
+            size.width - _fabSize - _fabMargin,
+            size.height - viewPadding.bottom - _fabSize - _fabMargin,
+          );
           final offset = _clampFabOffset(
-            _fabOffset ??
-                Offset(
-                  size.width - _fabSize - 18,
-                  size.height - _fabSize - 18,
-                ),
+            _fabOffset ?? defaultFabOffset,
             size,
+            viewPadding,
           );
 
           return Stack(
@@ -571,12 +583,20 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                 left: offset.dx,
                 top: offset.dy,
                 child: GestureDetector(
-                  onPanStart: (_) => setState(() => _fabDragging = true),
+                  onPanStart: (details) {
+                    setState(() {
+                      _fabDragging = true;
+                      _startFabOffset = _fabOffset; // 現在のFABのオフセットを記録
+                      _startGlobalPosition = details.globalPosition; // ドラッグ開始時のポインター位置を記録
+                    });
+                  },
                   onPanUpdate: (details) {
                     setState(() {
+                      if (_startFabOffset == null || _startGlobalPosition == null) return; // 念のためnullチェック
                       _fabOffset = _clampFabOffset(
-                        offset + details.delta,
+                        _startFabOffset! + (details.globalPosition - _startGlobalPosition!),
                         size,
+                        viewPadding,
                       );
                     });
                   },
