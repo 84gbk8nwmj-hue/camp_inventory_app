@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/gear_provider.dart';
 import '../providers/manufacturer_provider.dart';
-import 'reorderable_list_widgets.dart';
 
 /// メーカー選択（検索付きボトムシート・カスタム追加対応）
 class ManufacturerPickerField extends ConsumerStatefulWidget {
@@ -229,7 +228,7 @@ class _ManufacturerPickerSheetState
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
-    final manufacturers = ref.watch(manufacturerProvider);
+    ref.watch(manufacturerProvider);
     final notifier = ref.read(manufacturerProvider.notifier);
     final filtered = notifier.search(_query);
 

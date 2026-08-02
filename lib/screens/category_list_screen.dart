@@ -5,7 +5,6 @@ import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/database_providers.dart';
 import '../providers/gear_provider.dart';
-import '../widgets/reorderable_list_widgets.dart';
 
 class CategoryListScreen extends ConsumerStatefulWidget {
   const CategoryListScreen({super.key});
