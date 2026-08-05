@@ -1,82 +1,67 @@
-import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart' as url_launcher;
-import 'package:geolocator/geolocator.dart'; // 現在地取得のために追加
+  import 'package:flutter/material.dart';
+  import 'package:url_launcher/url_launcher.dart' as url_launcher;
+  import 'package:geolocator/geolocator.dart'; // 現在地取得のために追加
+  import 'dart:io';
 
-// 周辺スポットのカテゴリ定義
-enum SpotCategory {
-  supermarket, // スーパー
-  homeCenter, // ホームセンター
-  outdoorShop, // アウトドアショップ
-  gasStation, // ガソリンスタンド
-  hotSpring, // 温泉
-  convenience, // コンビニ
-}
-
-// 周辺スポットのモデル (今回はUIのみなので簡略化)
-class NearbySpot {
-  final String id;
-  final String name;
-  final SpotCategory category;
-
-  NearbySpot({
-    required this.id,
-    required this.name,
-    required this.category,
-  });
-
-  IconData get icon {
-    switch (category) {
-      case SpotCategory.supermarket:
-        return Icons.local_grocery_store;
-      case SpotCategory.homeCenter:
-        return Icons.build;
-      case SpotCategory.outdoorShop:
-        return Icons.hiking;
-      case SpotCategory.gasStation:
-        return Icons.local_gas_station;
-      case SpotCategory.hotSpring:
-        return Icons.hot_tub;
-      case SpotCategory.convenience:
-        return Icons.storefront;
-    }
+  // 周辺スポットのカテゴリ定義
+  enum SpotCategory {
+    supermarket, // スーパー
+    homeCenter, // ホームセンター
+    outdoorShop, // アウトドアショップ
+    gasStation, // ガソリンスタンド
+    hotSpring, // 温泉
+    convenience, // コンビニ
   }
 
-  Color get color {
-    switch (category) {
-      case SpotCategory.supermarket:
-        return Colors.greenAccent;
-      case SpotCategory.homeCenter:
-        return Colors.blueAccent;
-      case SpotCategory.outdoorShop:
-        return Colors.purpleAccent;
-      case SpotCategory.gasStation:
-        return Colors.redAccent;
-      case SpotCategory.hotSpring:
-        return Colors.lightBlueAccent;
-      case SpotCategory.convenience:
-        return Colors.pinkAccent;
+  // 周辺スポットのモデル (今回はUIのみなので簡略化)
+  class NearbySpot {
+    final String id;
+    final String name;
+    final SpotCategory category;
+
+    NearbySpot({
+      required this.id,
+      required this.name,
+      required this.category,
+    });
+
+    IconData get icon {
+      switch (category) {
+        case SpotCategory.supermarket:
+          return Icons.local_grocery_store;
+        case SpotCategory.homeCenter:
+          return Icons.build;
+        case SpotCategory.outdoorShop:
+          return Icons.hiking;
+        case SpotCategory.gasStation:
+          return Icons.local_gas_station;
+        case SpotCategory.hotSpring:
+          return Icons.hot_tub;
+        case SpotCategory.convenience:
+          return Icons.storefront;
+      }
     }
+
   }
-}
 
-class NearbyStoreSearchScreen extends StatefulWidget {
-  const NearbyStoreSearchScreen({super.key});
+  class NearbyStoreSearchScreen extends StatefulWidget {
+    const NearbyStoreSearchScreen({super.key});
 
-  @override
-  State<NearbyStoreSearchScreen> createState() => _NearbyStoreSearchScreenState();
-}
+    @override
+    State<NearbyStoreSearchScreen> createState() => _NearbyStoreSearchScreenState();
+  }
 
-class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
-  Position? _currentPosition; // 現在地を保持するための変数
+  class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
+    Position? _currentPosition; // 現在地を保持するための変数
 
-  final List<Map<String, dynamic>> _categories = [
-    {'label': 'スーパー', 'category': SpotCategory.supermarket, 'icon': Icons.local_grocery_store, 'searchWord': 'スーパー'},
-    {'label': 'ホームセンター', 'category': SpotCategory.homeCenter, 'icon': Icons.build, 'searchWord': 'ホームセンター'},
-    {'label': 'アウトドアショップ', 'category': SpotCategory.outdoorShop, 'icon': Icons.hiking, 'searchWord': 'アウトドアショップ'},
-    {'label': 'ガソリンスタンド', 'category': SpotCategory.gasStation, 'icon': Icons.local_gas_station, 'searchWord': 'ガソリンスタンド'},
-    {'label': '温泉', 'category': SpotCategory.hotSpring, 'icon': Icons.hot_tub, 'searchWord': '日帰り温泉'},
-    {'label': 'コンビニ', 'category': SpotCategory.convenience, 'icon': Icons.storefront, 'searchWord': 'コンビニ'},
-  ];
+    final List<Map<String, dynamic>> _categories = [
+      {'label': 'スーパー', 'category': SpotCategory.supermarket, 'icon': Icons.local_grocery_store, 'searchWord': 'スーパー'},
+      {'label': 'ホームセンター', 'category': SpotCategory.homeCenter, 'icon': Icons.build, 'searchWord': 'ホームセンター'},
+      {'label': 'アウトドアショップ', 'category': SpotCategory.outdoorShop, 'icon': Icons.hiking, 'searchWord': 'アウトドアショップ'},
+      {'label': 'ガソリンスタンド', 'category': SpotCategory.gasStation, 'icon': Icons.local_gas_station, 'searchWord': 'ガソリンスタンド'},
+      {'label': '温泉', 'category': SpotCategory.hotSpring, 'icon': Icons.hot_tub, 'searchWord': '日帰り温泉'},
+      {'label': 'コンビニ', 'category': SpotCategory.convenience, 'icon': Icons.storefront, 'searchWord': 'コンビニ'},
+    ];
 
   @override
   void initState() {
@@ -129,46 +114,49 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
     );
   }
 
-  Future<void> _launchGoogleMapsSearch(String searchWord) async {
-    String searchUrl;
-    String snackBarMessage;
-
-    if (_currentPosition == null) {
-      snackBarMessage = '現在地が取得できませんでした。キーワードで検索します。';
-      // 現在地がない場合は、キーワードのみで検索するURLを生成
-      searchUrl = 'https://www.google.com/maps/search/?api=1&query=$searchWord';
-    } else {
-      snackBarMessage = 'Googleマップを起動します。'; // 通常成功時のメッセージ
-      final String lat = _currentPosition!.latitude.toString();
-      final String lng = _currentPosition!.longitude.toString();
-      // 現在地がある場合は、現在地周辺でキーワード検索するURLを生成
-      searchUrl = 'https://www.google.com/maps/search/?api=1&query=$searchWord&query_place_id=&center=$lat,$lng';
-    }
-    
-    _showSnackBar(snackBarMessage); // ユーザーに検索モードを伝える
-
-    debugPrint('Generated searchUrl: $searchUrl');
-    try {
-      final uri = Uri.parse(searchUrl);
-      final canLaunch = await url_launcher.canLaunchUrl(uri);
-      debugPrint('canLaunchUrl($searchUrl): $canLaunch');
-
-      // canLaunchUrlのチェックを一時的にスキップして、直接 launchUrl を試す
-      // if (canLaunch) { // causes linting errors. Remove this comment after debugging
-        await url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication);
-      // } else { // causes linting errors. Remove this comment after debugging
-      //   _showSnackBar('Googleマップを起動できませんでした。'); // causes linting errors. Remove this comment after debugging
-      // } // causes linting errors. Remove this comment after debugging
-    } catch (e) {
-      debugPrint('Google Maps起動エラー: $e');
-      _showSnackBar('Googleマップの起動中にエラーが発生しました: $e');
-    }
+Future<void> _launchGoogleMapsSearch(String searchWord) async {
+  if (_currentPosition == null) {
+    _showSnackBar('現在地が取得できませんでした。');
+    return;
   }
+
+  final double lat = _currentPosition!.latitude;
+  final double lng = _currentPosition!.longitude;
+
+  late final Uri uri;
+
+  if (Platform.isAndroid) {
+  // Androidはgeoで現在地周辺検索
+  uri = Uri.parse(
+    'geo:$lat,$lng?q=${Uri.encodeComponent(searchWord)}',
+  );
+} else if (Platform.isIOS) {
+  // iPhoneはGoogle Maps URL
+  uri = Uri.parse(
+    'https://www.google.com/maps/search/?api=1&query=$searchWord&center=$lat,$lng',
+  );
+}
+
+  debugPrint('検索URL: $uri');
+
+  try {
+    await url_launcher.launchUrl(
+      uri,
+      mode: url_launcher.LaunchMode.externalApplication,
+    );
+  } catch (e, stack) {
+    debugPrint('Map起動エラー: $e\n$stack');
+
+    if (!mounted) return;
+
+    _showSnackBar('地図を起動できませんでした。');
+  }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text('周辺スポット検索'),
       ),
@@ -179,28 +167,29 @@ class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
           final label = categoryData['label'] as String;
           final icon = categoryData['icon'] as IconData;
           final searchWord = categoryData['searchWord'] as String;
+          final colorScheme = Theme.of(context).colorScheme;
 
           return Card(
-            color: Colors.grey[900],
+            color: colorScheme.surfaceContainerHighest,
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: InkWell(
-              onTap: () => _launchGoogleMapsSearch(searchWord), // ここを変更
+              onTap: () => _launchGoogleMapsSearch(searchWord),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    Icon(icon, color: Colors.greenAccent, size: 30),
+                    Icon(icon, color: colorScheme.primary, size: 30),
                     const SizedBox(width: 16),
                     Text(
                       label,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const Spacer(),
-                    const Icon(Icons.arrow_forward_ios, color: Colors.grey),
+                    Icon(Icons.arrow_forward_ios, color: colorScheme.onSurfaceVariant),
                   ],
                 ),
               ),
