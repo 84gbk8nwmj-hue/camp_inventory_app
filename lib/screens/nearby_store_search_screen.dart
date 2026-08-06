@@ -115,35 +115,44 @@
   }
 
 Future<void> _launchGoogleMapsSearch(String searchWord) async {
-  if (_currentPosition == null) {
-    _showSnackBar('現在地が取得できませんでした。');
-    return;
-  }
-
-  final double lat = _currentPosition!.latitude;
-  final double lng = _currentPosition!.longitude;
-
-  late final Uri uri;
-
-  if (Platform.isAndroid) {
-  // Androidはgeoで現在地周辺検索
-  uri = Uri.parse(
-    'geo:$lat,$lng?q=${Uri.encodeComponent(searchWord)}',
-  );
-} else if (Platform.isIOS) {
-  // iPhoneはGoogle Maps URL
-  uri = Uri.parse(
-    'https://www.google.com/maps/search/?api=1&query=$searchWord&center=$lat,$lng',
-  );
-}
-
-  debugPrint('検索URL: $uri');
-
   try {
+    // 検索実行時に最新の現在地を取得
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    final double lat = position.latitude;
+    final double lng = position.longitude;
+
+    debugPrint(
+      '検索時現在地 lat:$lat lng:$lng',
+    );
+
+    late final Uri uri;
+
+    if (Platform.isAndroid) {
+      // Android: geoインテントで現在地周辺検索
+      uri = Uri.parse(
+        'geo:$lat,$lng?q=${Uri.encodeComponent(searchWord)}',
+      );
+    } else if (Platform.isIOS) {
+      // iOS: Google Maps URL
+      uri = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(searchWord)}&center=$lat,$lng',
+      );
+    } else {
+      uri = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(searchWord)}',
+      );
+    }
+
+    debugPrint('検索URL: $uri');
+
     await url_launcher.launchUrl(
       uri,
       mode: url_launcher.LaunchMode.externalApplication,
     );
+
   } catch (e, stack) {
     debugPrint('Map起動エラー: $e\n$stack');
 
