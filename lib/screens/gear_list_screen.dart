@@ -450,7 +450,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
           final viewPadding = MediaQuery.of(context).padding;
           // FABの初期位置をSafeAreaとFABのサイズを考慮して設定
           final defaultFabOffset = Offset(
-            size.width - _fabSize - _fabMargin,
+            size.width - _fabSize - _fabMargin -30,
             size.height - viewPadding.bottom - _fabSize - _fabMargin,
           );
           final offset = _clampFabOffset(
@@ -583,14 +583,20 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                 left: offset.dx,
                 top: offset.dy,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque, // 追加
                   onPanStart: (details) {
+                    debugPrint('FAB PAN START');
+                    debugPrint('  details.globalPosition: ${details.globalPosition}');
+                    debugPrint('  _fabOffset: $_fabOffset');
+                    debugPrint('  _startFabOffset: $_startFabOffset');
                     setState(() {
                       _fabDragging = true;
-                      _startFabOffset = _fabOffset; // 現在のFABのオフセットを記録
+                      _startFabOffset = offset; // 現在のFABのオフセットを記録
                       _startGlobalPosition = details.globalPosition; // ドラッグ開始時のポインター位置を記録
                     });
                   },
                   onPanUpdate: (details) {
+                    debugPrint('FAB PAN UPDATE: ${details.globalPosition}');
                     setState(() {
                       if (_startFabOffset == null || _startGlobalPosition == null) return; // 念のためnullチェック
                       _fabOffset = _clampFabOffset(
@@ -601,8 +607,13 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                     });
                   },
                   onPanEnd: (_) {
+                    debugPrint('FAB PAN END');
                     setState(() => _fabDragging = false);
                     _saveFabPosition();
+                  },
+                  onTap: () {
+                    debugPrint('FAB TAP');
+                    _openNewGearScreen();
                   },
                   child: Opacity(
                     opacity: _fabDragging ? 0.9 : 0.68,
@@ -610,7 +621,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                       heroTag: 'gear_list_add',
                       shape: const CircleBorder(),
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      onPressed: _openNewGearScreen,
+                      onPressed: null, // タップ処理をGestureDetectorに移したためnullに設定
                       child: const Icon(Icons.add),
                     ),
                   ),
