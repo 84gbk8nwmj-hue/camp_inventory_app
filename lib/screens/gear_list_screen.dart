@@ -585,18 +585,13 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque, // 追加
                   onPanStart: (details) {
-                    debugPrint('FAB PAN START');
-                    debugPrint('  details.globalPosition: ${details.globalPosition}');
-                    debugPrint('  _fabOffset: $_fabOffset');
-                    debugPrint('  _startFabOffset: $_startFabOffset');
-                    setState(() {
+                   setState(() {
                       _fabDragging = true;
                       _startFabOffset = offset; // 現在のFABのオフセットを記録
                       _startGlobalPosition = details.globalPosition; // ドラッグ開始時のポインター位置を記録
                     });
                   },
                   onPanUpdate: (details) {
-                    debugPrint('FAB PAN UPDATE: ${details.globalPosition}');
                     setState(() {
                       if (_startFabOffset == null || _startGlobalPosition == null) return; // 念のためnullチェック
                       _fabOffset = _clampFabOffset(
@@ -607,12 +602,10 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                     });
                   },
                   onPanEnd: (_) {
-                    debugPrint('FAB PAN END');
-                    setState(() => _fabDragging = false);
+                   setState(() => _fabDragging = false);
                     _saveFabPosition();
                   },
                   onTap: () {
-                    debugPrint('FAB TAP');
                     _openNewGearScreen();
                   },
                   child: Opacity(
