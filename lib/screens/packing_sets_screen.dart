@@ -23,15 +23,13 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
   static const double _fabMargin = 12.0;
 
   Offset _clampFabOffset(Offset offset, Size size, EdgeInsets viewPadding) {
-    // FABが表示されうる最小のY座標 (AppBarの下より少し上まで許容)
-    final minY = viewPadding.top + kToolbarHeight - (_fabSize / 2);
-    // FABが表示されうる最大のY座標 (NavigationBarの上より少し下まで許容)
-    final maxY = size.height - viewPadding.bottom - (_fabSize / 2);
+    // 左右方向: FABを画面内に収める
+    final minX = _fabMargin;
+    final maxX = size.width - _fabSize - _fabMargin;
 
-    // FABが表示されうる最小のX座標 (画面左端より少し左まで許容)
-    final minX = -(_fabSize / 2);
-    // FABが表示されうる最大のX座標 (画面右端より少し右まで許容)
-    final maxX = size.width - (_fabSize / 2);
+    // 上下方向: SafeAreaとAppBarを考慮し、FABが重ならないようにする
+    final minY = viewPadding.top + kToolbarHeight + _fabMargin;
+    final maxY = size.height - viewPadding.bottom - _fabSize - _fabMargin;
 
     return Offset(
       offset.dx.clamp(minX, maxX).toDouble(),

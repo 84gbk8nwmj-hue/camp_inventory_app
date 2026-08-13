@@ -71,13 +71,12 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
 
   Offset _clampFabOffset(Offset offset, Size size, EdgeInsets viewPadding) {
     // FABが表示されうる最小のY座標 (AppBarの下より少し上まで許容)
+    // 左右方向: FABを画面内に収める
     final minX = _fabMargin;
-    // FABの左上隅の最大X座標 (画面右端からのマージンとFABの幅を考慮)
     final maxX = size.width - _fabSize - _fabMargin;
 
-    // FABの左上隅の最小Y座標 (AppBarの下と上からのマージン)
+    // 上下方向: SafeAreaとAppBarを考慮し、FABが重ならないようにする
     final minY = viewPadding.top + kToolbarHeight + _fabMargin;
-    // FABの左上隅の最大Y座標 (画面下端からのマージンとFABの高さを考慮)
     final maxY = size.height - viewPadding.bottom - _fabSize - _fabMargin;
 
     return Offset(
@@ -93,7 +92,8 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     );
   }
 
-  // ZIPバックアップ作成処理
+
+
   Future<void> _createBackup() async {
     if (_transferring) return;
     setState(() => _transferring = true);
@@ -193,6 +193,10 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
       if (mounted) setState(() => _transferring = false);
     }
   }
+
+
+
+
 
   String _emptyMessage(GearState gear, List<dynamic> items) {
     if (gear.items.isEmpty) return 'まだギアが登録されていません';
@@ -307,32 +311,32 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                     ),
                   );
                   break;
-                case 'createBackup': // 変更
-                  _createBackup(); // バックアップ作成を呼び出す
+                case 'createBackup':
+                  _createBackup();
                   break;
-                case 'restoreBackup': // 変更
-                  _importBackupZip(); // ZIPインポートを呼び出す
+                case 'restoreBackup':
+                  _importBackupZip();
                   break;
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
-                value: 'createBackup', // 変更
+                value: 'createBackup',
                 child: Row(
                   children: [
                     Icon(Icons.upload_file, size: 20),
                     SizedBox(width: 12),
-                    Text('バックアップを作成'), // 変更
+                    Text('バックアップを作成'),
                   ],
                 ),
               ),
               const PopupMenuItem(
-                value: 'restoreBackup', // 変更
+                value: 'restoreBackup',
                 child: Row(
                   children: [
                     Icon(Icons.download, size: 20),
                     SizedBox(width: 12),
-                    Text('バックアップを復元'), // 変更
+                    Text('バックアップを復元'),
                   ],
                 ),
               ),
