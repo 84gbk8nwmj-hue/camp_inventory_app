@@ -41,7 +41,6 @@
           return Icons.storefront;
       }
     }
-
   }
 
   class NearbyStoreSearchScreen extends StatefulWidget {

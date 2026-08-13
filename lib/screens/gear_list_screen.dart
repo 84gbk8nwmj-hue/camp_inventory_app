@@ -71,14 +71,14 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
 
   Offset _clampFabOffset(Offset offset, Size size, EdgeInsets viewPadding) {
     // FABが表示されうる最小のY座標 (AppBarの下より少し上まで許容)
-    final minY = viewPadding.top + kToolbarHeight - (_fabSize / 2);
-    // FABが表示されうる最大のY座標 (NavigationBarの上より少し下まで許容)
-    final maxY = size.height - viewPadding.bottom - (_fabSize / 2);
+    final minX = _fabMargin;
+    // FABの左上隅の最大X座標 (画面右端からのマージンとFABの幅を考慮)
+    final maxX = size.width - _fabSize - _fabMargin;
 
-    // FABが表示されうる最小のX座標 (画面左端より少し左まで許容)
-    final minX = -(_fabSize / 2);
-    // FABが表示されうる最大のX座標 (画面右端より少し右まで許容)
-    final maxX = size.width - (_fabSize / 2);
+    // FABの左上隅の最小Y座標 (AppBarの下と上からのマージン)
+    final minY = viewPadding.top + kToolbarHeight + _fabMargin;
+    // FABの左上隅の最大Y座標 (画面下端からのマージンとFABの高さを考慮)
+    final maxY = size.height - viewPadding.bottom - _fabSize - _fabMargin;
 
     return Offset(
       offset.dx.clamp(minX, maxX).toDouble(),
@@ -93,23 +93,8 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     );
   }
 
-  Future<void> _exportJson() async {
-    if (_transferring) return;
-    setState(() => _transferring = true);
-    try {
-      await ref.read(dataTransferServiceProvider).shareBackupJsonFromDatabase();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('エクスポートに失敗しました: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _transferring = false);
-    }
-  }
-
-  Future<void> _exportZip() async {
+  // ZIPバックアップ作成処理
+  Future<void> _createBackup() async {
     if (_transferring) return;
     setState(() => _transferring = true);
     try {
@@ -117,7 +102,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ZIPエクスポートに失敗しました: $e')),
+          SnackBar(content: Text('バックアップ作成に失敗しました: $e')),
         );
       }
     } finally {
@@ -125,13 +110,14 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     }
   }
 
-  Future<void> _importBackup({required bool fromZip}) async {
+  // ZIPバックアップ復元処理
+  Future<void> _importBackupZip() async {
     if (_transferring) return;
 
     final mode = await showDialog<ImportMode>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(fromZip ? 'ZIPをインポート' : 'JSONをインポート'),
+        title: const Text('バックアップを復元'),
         content: const Text(
           '「置き換え」は現在のデータをすべて削除してから復元します。\n'
           '「統合」は同名ギアを更新し、新しいデータを追加します。',
@@ -155,12 +141,11 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     if (mode == null) return;
 
     if (mode == ImportMode.replace) {
-      final extra = fromZip ? '画像も含めて' : '';
       final confirm = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('データを置き換えますか？'),
-          content: Text('現在の在庫・カテゴリ・持ち出しセット${extra}がすべて削除されます。'),
+          content: const Text('現在の在庫・カテゴリ・持ち出しセットがすべて削除されます（画像も含む）。'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -179,9 +164,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     setState(() => _transferring = true);
     try {
       final service = ref.read(dataTransferServiceProvider);
-      final result = fromZip
-          ? await service.pickAndImportBackupZip(mode: mode)
-          : await service.pickAndImportBackup(mode: mode);
+      final result = await service.pickAndImportBackupZip(mode: mode);
       if (result == null) return;
 
       await reloadAllProviders(ref);
@@ -189,7 +172,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
         await showDialog<void>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('インポート完了'),
+            title: const Text('復元完了'),
             content: Text(result.summary),
             actions: [
               TextButton(
@@ -203,63 +186,13 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('インポートに失敗しました: $e')),
+          SnackBar(content: Text('復元に失敗しました: $e')),
         );
       }
     } finally {
       if (mounted) setState(() => _transferring = false);
     }
   }
-
-  void _showDataMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.upload_file),
-              title: const Text('JSONエクスポート'),
-              subtitle: const Text('在庫データのみ（軽量）'),
-              onTap: () {
-                Navigator.pop(context);
-                _exportJson();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.folder_zip),
-              title: const Text('ZIPエクスポート（画像付き）'),
-              subtitle: const Text('在庫データ + 写真'),
-              onTap: () {
-                Navigator.pop(context);
-                _exportZip();
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.download),
-              title: const Text('JSONインポート'),
-              onTap: () {
-                Navigator.pop(context);
-                _importBackup(fromZip: false);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.folder_zip_outlined),
-              title: const Text('ZIPインポート（画像付き）'),
-              onTap: () {
-                Navigator.pop(context);
-                _importBackup(fromZip: true);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
 
   String _emptyMessage(GearState gear, List<dynamic> items) {
     if (gear.items.isEmpty) return 'まだギアが登録されていません';
@@ -374,58 +307,32 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
                     ),
                   );
                   break;
-                case 'exportJson':
-                  _exportJson();
+                case 'createBackup': // 変更
+                  _createBackup(); // バックアップ作成を呼び出す
                   break;
-                case 'exportZip':
-                  _exportZip();
-                  break;
-                case 'importJson':
-                  _importBackup(fromZip: false);
-                  break;
-                case 'importZip':
-                  _importBackup(fromZip: true);
+                case 'restoreBackup': // 変更
+                  _importBackupZip(); // ZIPインポートを呼び出す
                   break;
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
-                value: 'exportJson',
+                value: 'createBackup', // 変更
                 child: Row(
                   children: [
                     Icon(Icons.upload_file, size: 20),
                     SizedBox(width: 12),
-                    Text('JSONエクスポート'),
+                    Text('バックアップを作成'), // 変更
                   ],
                 ),
               ),
               const PopupMenuItem(
-                value: 'exportZip',
-                child: Row(
-                  children: [
-                    Icon(Icons.folder_zip, size: 20),
-                    SizedBox(width: 12),
-                    Text('ZIPエクスポート'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'importJson',
+                value: 'restoreBackup', // 変更
                 child: Row(
                   children: [
                     Icon(Icons.download, size: 20),
                     SizedBox(width: 12),
-                    Text('JSONインポート'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'importZip',
-                child: Row(
-                  children: [
-                    Icon(Icons.folder_zip_outlined, size: 20),
-                    SizedBox(width: 12),
-                    Text('ZIPインポート'),
+                    Text('バックアップを復元'), // 変更
                   ],
                 ),
               ),
@@ -450,7 +357,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
           final viewPadding = MediaQuery.of(context).padding;
           // FABの初期位置をSafeAreaとFABのサイズを考慮して設定
           final defaultFabOffset = Offset(
-            size.width - _fabSize - _fabMargin -30,
+            size.width - _fabSize - _fabMargin,
             size.height - viewPadding.bottom - _fabSize - _fabMargin,
           );
           final offset = _clampFabOffset(

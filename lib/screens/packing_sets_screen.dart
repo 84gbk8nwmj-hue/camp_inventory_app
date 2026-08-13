@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/packing_set.dart';
-import '../providers/data_transfer_provider.dart';
+import '../providers/data_transfer_provider.dart'; // 再追加
 import '../providers/gear_provider.dart';
 import '../providers/packing_provider.dart';
 import 'packing_checklist_screen.dart';
@@ -17,16 +17,25 @@ class PackingSetsScreen extends ConsumerStatefulWidget {
 class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
   Offset? _fabOffset;
   bool _fabDragging = false;
+  Offset? _startFabOffset;
+  Offset? _startGlobalPosition;
   static const double _fabSize = 56.0;
+  static const double _fabMargin = 12.0;
 
-  Offset _clampFabOffset(Offset offset, Size size) {
-    final double minX = 8;
-    final double minY = 8;
-    final double maxX = size.width - _fabSize - 8;
-    final double maxY = size.height - _fabSize - 8;
+  Offset _clampFabOffset(Offset offset, Size size, EdgeInsets viewPadding) {
+    // FABが表示されうる最小のY座標 (AppBarの下より少し上まで許容)
+    final minY = viewPadding.top + kToolbarHeight - (_fabSize / 2);
+    // FABが表示されうる最大のY座標 (NavigationBarの上より少し下まで許容)
+    final maxY = size.height - viewPadding.bottom - (_fabSize / 2);
+
+    // FABが表示されうる最小のX座標 (画面左端より少し左まで許容)
+    final minX = -(_fabSize / 2);
+    // FABが表示されうる最大のX座標 (画面右端より少し右まで許容)
+    final maxX = size.width - (_fabSize / 2);
+
     return Offset(
-      offset.dx.clamp(minX, maxX),
-      offset.dy.clamp(minY, maxY),
+      offset.dx.clamp(minX, maxX).toDouble(),
+      offset.dy.clamp(minY, maxY).toDouble(),
     );
   }
 
@@ -65,46 +74,6 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
       }
     }
     ctrl.dispose();
-  }
-
-  Future<void> _importTemplate(BuildContext context, WidgetRef ref) async {
-    try {
-      final result =
-          await ref.read(dataTransferServiceProvider).pickAndImportPackingTemplate();
-      if (result == null) return;
-
-      await reloadAllProviders(ref);
-      if (!context.mounted) return;
-
-      var message = result.summary;
-      if (result.skippedGearNames.isNotEmpty) {
-        final names = result.skippedGearNames.take(5).join('、');
-        final more = result.skippedGearNames.length > 5
-            ? ' 他${result.skippedGearNames.length - 5}件'
-            : '';
-        message += '\n\n未登録: $names$more';
-      }
-
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('テンプレート読み込み完了'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('読み込みに失敗しました: $e')),
-        );
-      }
-    }
   }
 
   Future<void> _shareTemplate(
@@ -235,17 +204,12 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('持ち出しセット'),
-        actions: [
-          IconButton(
-            tooltip: 'テンプレートを読み込む',
-            icon: const Icon(Icons.file_download_outlined),
-            onPressed: () => _importTemplate(context, ref),
-          ),
-        ],
+        actions: [], // テンプレート読み込みボタンを削除
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
+          final viewPadding = MediaQuery.of(context).padding;
           final offset = _clampFabOffset(
             _fabOffset ??
                 Offset(
@@ -253,6 +217,7 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
                   size.height - _fabSize - 18,
                 ),
             size,
+            viewPadding,
           );
 
           return Stack(
@@ -264,11 +229,7 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
                         children: [
                           const Text('セットがありません'),
                           const SizedBox(height: 24),
-                          OutlinedButton.icon(
-                            onPressed: () => _importTemplate(context, ref),
-                            icon: const Icon(Icons.file_download_outlined),
-                            label: const Text('テンプレートを読み込む'),
-                          ),
+                          // テンプレート読み込みボタンを削除
                         ],
                       ),
                     )
@@ -340,12 +301,20 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
                 left: offset.dx,
                 top: offset.dy,
                 child: GestureDetector(
-                  onPanStart: (_) => setState(() => _fabDragging = true),
+                  onPanStart: (details) {
+                    setState(() {
+                      _fabDragging = true;
+                      _startFabOffset = offset;
+                      _startGlobalPosition = details.globalPosition;
+                    });
+                  },
                   onPanUpdate: (details) {
                     setState(() {
+                      if (_startFabOffset == null || _startGlobalPosition == null) return;
                       _fabOffset = _clampFabOffset(
-                        offset + details.delta,
+                        _startFabOffset! + (details.globalPosition - _startGlobalPosition!),
                         size,
+                        viewPadding,
                       );
                     });
                   },

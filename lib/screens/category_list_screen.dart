@@ -20,6 +20,8 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
 
   Offset? _fabOffset;
   bool _fabDragging = false;
+  Offset? _startFabOffset;
+  Offset? _startGlobalPosition;
 
   @override
   void initState() {
@@ -51,12 +53,20 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
         );
   }
 
-  Offset _clampFabOffset(Offset offset, Size size) {
+  Offset _clampFabOffset(Offset offset, Size size, EdgeInsets viewPadding) {
+    // FABが表示されうる最小のY座標 (AppBarの下より少し上まで許容)
+    final minX = _fabMargin;
+    // FABの左上隅の最大X座標 (画面右端からのマージンとFABの幅を考慮)
     final maxX = size.width - _fabSize - _fabMargin;
-    final maxY = size.height - _fabSize - _fabMargin;
+
+    // FABの左上隅の最小Y座標 (AppBarの下と上からのマージン)
+    final minY = viewPadding.top + kToolbarHeight + _fabMargin;
+    // FABの左上隅の最大Y座標 (画面下端からのマージンとFABの高さを考慮)
+    final maxY = size.height - viewPadding.bottom - _fabSize - _fabMargin;
+
     return Offset(
-      offset.dx.clamp(_fabMargin, maxX).toDouble(),
-      offset.dy.clamp(_fabMargin, maxY).toDouble(),
+      offset.dx.clamp(minX, maxX).toDouble(),
+      offset.dy.clamp(minY, maxY).toDouble(),
     );
   }
 
@@ -181,13 +191,15 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
+          final viewPadding = MediaQuery.of(context).padding;
           final offset = _clampFabOffset(
             _fabOffset ??
                 Offset(
-                  size.width - _fabSize - 18,
-                  size.height - _fabSize - 18,
+                  size.width - _fabSize - _fabMargin,
+                  size.height - viewPadding.bottom - _fabSize - _fabMargin,
                 ),
             size,
+            viewPadding,
           );
 
           return Stack(
@@ -256,12 +268,20 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
                 left: offset.dx,
                 top: offset.dy,
                 child: GestureDetector(
-                  onPanStart: (_) => setState(() => _fabDragging = true),
+                  onPanStart: (details) {
+                    setState(() {
+                      _fabDragging = true;
+                      _startFabOffset = offset;
+                      _startGlobalPosition = details.globalPosition;
+                    });
+                  },
                   onPanUpdate: (details) {
                     setState(() {
+                      if (_startFabOffset == null || _startGlobalPosition == null) return;
                       _fabOffset = _clampFabOffset(
-                        offset + details.delta,
+                        _startFabOffset! + (details.globalPosition - _startGlobalPosition!),
                         size,
+                        viewPadding,
                       );
                     });
                   },
