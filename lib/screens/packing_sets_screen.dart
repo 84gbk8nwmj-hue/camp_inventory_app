@@ -211,8 +211,8 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
           final offset = _clampFabOffset(
             _fabOffset ??
                 Offset(
-                  size.width - _fabSize - 18,
-                  size.height - _fabSize - 18,
+                  size.width - _fabSize - _fabMargin,
+                  size.height - viewPadding.bottom - _fabSize - _fabMargin,
                 ),
             size,
             viewPadding,
