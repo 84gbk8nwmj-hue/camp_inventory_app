@@ -70,43 +70,15 @@ class GearState {
       }).toList();
     }
 
-    // ソート
-    switch (sortOption) {
-      case GearSortOption.manual:
-        list.sort((a, b) {
-          final o = a.sortOrder.compareTo(b.sortOrder);
-          return o != 0 ? o : a.name.compareTo(b.name);
-        });
-      case GearSortOption.nameAsc:
-        list.sort((a, b) => a.name.compareTo(b.name));
-      case GearSortOption.nameDesc:
-        list.sort((a, b) => b.name.compareTo(a.name));
-      case GearSortOption.weightDesc:
-        list.sort(
-          (a, b) => gearLineWeight(b).compareTo(gearLineWeight(a)),
-        );
-      case GearSortOption.weightAsc:
-        list.sort(
-          (a, b) => gearLineWeight(a).compareTo(gearLineWeight(b)),
-        );
-      case GearSortOption.categoryAsc:
-        list.sort((a, b) {
-          final c = a.categoryName.compareTo(b.categoryName);
-          return c != 0 ? c : a.name.compareTo(b.name);
-        });
-    }
-
-    // 標準（格納順）かつフィルタリングなしの場合のみ親子階層を表示
-    if (sortOption == GearSortOption.manual &&
-        filterCategoryId == null &&
-        q.isEmpty) {
-      return _buildHierarchy(list);
-    }
-
-    return list;
+    // 常に階層構造を構築し、指定されたソートオプションを適用
+    return _buildHierarchy(list, sortOption, categories);
   }
 
-  List<Gear> _buildHierarchy(List<Gear> flatList) {
+  List<Gear> _buildHierarchy(
+    List<Gear> flatList,
+    GearSortOption sortOption,
+    CategoryState categories,
+  ) {
     final result = <Gear>[];
     final childrenOf = <int, List<Gear>>{};
     final roots = <Gear>[];
@@ -124,13 +96,14 @@ class GearState {
       final children = childrenOf[parent.id];
       if (children != null) {
         // 子要素も sortOrder 順に並べる
-        children.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+        children.sort(_getComparator(sortOption, categories));
         for (final child in children) {
           addWithChildren(child);
         }
       }
     }
 
+    roots.sort(_getComparator(sortOption, categories));
     for (final root in roots) {
       addWithChildren(root);
     }
@@ -158,6 +131,28 @@ class GearState {
   String? filterCategoryName(CategoryState categories) {
     if (filterCategoryId == null) return null;
     return categories.byId(filterCategoryId!)?.name;
+  }
+  Comparator<Gear> _getComparator(GearSortOption option, CategoryState categories) {
+    return (a, b) {
+      switch (option) {
+        case GearSortOption.manual:
+          return a.sortOrder.compareTo(b.sortOrder);
+        case GearSortOption.nameAsc:
+          return a.name.compareTo(b.name);
+        case GearSortOption.nameDesc:
+          return b.name.compareTo(a.name);
+        case GearSortOption.weightDesc:
+          return gearLineWeight(b).compareTo(gearLineWeight(a));
+        case GearSortOption.weightAsc:
+          return gearLineWeight(a).compareTo(gearLineWeight(b));
+        case GearSortOption.categoryAsc:
+          // categoryName は CategoryState から取得する必要があるため、categories を引数として渡す
+          final categoryNameA = categories.byId(a.categoryId!)?.name ?? '';
+          final categoryNameB = categories.byId(b.categoryId!)?.name ?? '';
+          final c = categoryNameA.compareTo(categoryNameB);
+          return c != 0 ? c : a.name.compareTo(b.name);
+      }
+    };
   }
 }
 
@@ -259,60 +254,75 @@ class GearNotifier extends Notifier<GearState> {
     final list = state.displayItems(categories);
     if (oldIndex == newIndex) return;
 
-    // 1. 移動対象のサブツリーを特定（移動アイテムとそのすべての子孫）
-    final movingItem = list[oldIndex];
-    final subtree = <Gear>[movingItem];
-    final subtreeIds = {movingItem.id};
-    
-    int j = oldIndex + 1;
-    while (j < list.length) {
-      final item = list[j];
-      if (item.parentId != null && subtreeIds.contains(item.parentId)) {
-        subtree.add(item);
-        subtreeIds.add(item.id);
-        j++;
-      } else {
-        break;
-      }
-    }
-
-    // 2. リスト内での位置変更
-    final newList = List<Gear>.from(list);
-    newList.removeRange(oldIndex, oldIndex + subtree.length);
-    
-    int adjustedNewIndex = newIndex;
+    // ReorderableListViewの一般的な挙動に合わせて、newIndexがoldIndexより大きい場合は調整
+    // アイテムが削除されてから挿入されるため、newIndexが1つずれる
     if (oldIndex < newIndex) {
-      adjustedNewIndex -= subtree.length;
+      newIndex--;
     }
-    newList.insertAll(adjustedNewIndex, subtree);
 
-    // 3. 親子関係の更新
-    final movedRoot = subtree[0];
-    int? newParentId;
-    if (adjustedNewIndex > 0) {
-      final prevItem = newList[adjustedNewIndex - 1];
-      if (prevItem.id == movedRoot.parentId) {
-        // 親の直後に移動した場合は、その親の子になる
-        newParentId = prevItem.id;
-      } else if (prevItem.parentId == movedRoot.parentId) {
-        // 同じ親を持つ兄弟の後に移動した場合は、その親を維持
-        newParentId = prevItem.parentId;
-      } else {
-        // それ以外に移動した場合は、移動先の直前アイテムの親に合わせる
-        newParentId = prevItem.parentId;
+    final movingItem = list[oldIndex];
+
+    if (movingItem.parentId == null) {
+      // ケース A: 親ギアの並び替え（サブツリー全体を移動）
+      final subtree = <Gear>[movingItem];
+      final subtreeIds = {movingItem.id};
+
+      int j = oldIndex + 1;
+      while (j < list.length) {
+        final item = list[j];
+        if (item.parentId != null && subtreeIds.contains(item.parentId)) {
+          subtree.add(item);
+          subtreeIds.add(item.id);
+          j++;
+        } else {
+          break;
+        }
       }
-    } else {
-      newParentId = null;
-    }
-    
-    // parentId が変わる場合のみ更新
-    if (movedRoot.parentId != newParentId) {
-      await updateParent(movedRoot.id!, newParentId);
-    }
 
-    // 4. 全体の並び順（sortOrder）を確定
-    final orderedIds = newList.map((g) => g.id!).toList();
-    await reorderItems(orderedIds);
+      final newList = List<Gear>.from(list);
+      newList.removeRange(oldIndex, oldIndex + subtree.length);
+      newList.insertAll(newIndex, subtree);
+
+      // parentId の更新は行わないため、関連ロジックを削除
+
+      final orderedIds = newList.map((g) => g.id!).toList();
+      await reorderItems(orderedIds);
+    } else {
+      // ケース B: 子ギアの並び替え（同じ親を持つ子ギア内でのみ移動）
+      final currentParentId = movingItem.parentId!;
+
+      // 移動先インデックスがリストの範囲外の場合、または移動元の親がリストに存在しない場合
+      if (newIndex < 0 || newIndex >= list.length || !list.any((g) => g.id == currentParentId)) {
+        return; // 不正な移動
+      }
+
+      final targetItem = list[newIndex];
+
+      // 制約チェック:
+      // 1. 移動先が親ギアの場合、その親ギアがmovingItemの現在の親でなければならない
+      // 2. 移動先が子ギアの場合、その子ギアの親がmovingItemの現在の親でなければならない
+      // 3. ルートレベルへの移動を阻止 (movingItemが子ギアの場合)
+      if (targetItem.id != currentParentId && targetItem.parentId != currentParentId) {
+        return; // 別の親の配下やルートへの不正な移動
+      }
+      
+      // 移動先が、現在移動しようとしている子ギアの親ギアである場合（親ギアの直上への移動）
+      // このケースは、targetItem.id == currentParentId の場合に該当する。
+      // この場合、その親の直下の位置に移動することになるが、
+      // ReorderableListViewの挙動上、親ギアのすぐ下に子ギアが来ることは自然なため、許容する。
+      // ただし、子ギアは自分の親ギアの配下から出ない、という制約を優先する。
+      // すでに上記で targetItem.id != currentParentId のチェックがあるため、
+      // targetItemが親ギアである場合は、currentParentIdと一致しなければ不正となる。
+
+      final newList = List<Gear>.from(list);
+      final movedGear = newList.removeAt(oldIndex);
+      newList.insert(newIndex, movedGear);
+
+      // parentId の変更は行わないため、関連ロジックを削除
+
+      final orderedIds = newList.map((g) => g.id!).toList();
+      await reorderItems(orderedIds);
+    }
   }
 
   Future<void> reorderItems(List<int> orderedIds) async {

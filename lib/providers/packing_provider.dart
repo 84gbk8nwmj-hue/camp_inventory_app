@@ -11,15 +11,41 @@ class PackingGearView {
   final bool isPacked;
   final int sortOrder;
   final int? placementId;
+  final bool isGroupStart; // 親ギアであるか
+  final bool isGroupEnd;   // グループの最後のアイテムか
+  final double? groupTotalWeight; // 親ギアの場合、子孫を含む総重量
 
   const PackingGearView({
     required this.gear,
     required this.isPacked,
     required this.sortOrder,
     this.placementId,
+    this.isGroupStart = false,
+    this.isGroupEnd = false,
+    this.groupTotalWeight,
   });
 
   double get lineWeight => gearLineWeight(gear);
+
+  PackingGearView copyWith({
+    Gear? gear,
+    bool? isPacked,
+    int? sortOrder,
+    int? placementId,
+    bool? isGroupStart,
+    bool? isGroupEnd,
+    double? groupTotalWeight,
+  }) {
+    return PackingGearView(
+      gear: gear ?? this.gear,
+      isPacked: isPacked ?? this.isPacked,
+      sortOrder: sortOrder ?? this.sortOrder,
+      placementId: placementId ?? this.placementId,
+      isGroupStart: isGroupStart ?? this.isGroupStart,
+      isGroupEnd: isGroupEnd ?? this.isGroupEnd,
+      groupTotalWeight: groupTotalWeight ?? this.groupTotalWeight,
+    );
+  }
 }
 
 class PackingState {
@@ -73,6 +99,7 @@ class PackingState {
           isPacked: entry.isPacked,
           sortOrder: entry.sortOrder,
           placementId: entry.placementId,
+          // isGroupStart, isGroupEnd, groupTotalWeight は後で _buildHierarchicalViews で設定
         ));
       }
     }
@@ -95,13 +122,15 @@ class PackingState {
     });
 
     // 親子階層の構築
-    return _buildHierarchicalViews(views);
+    return _buildHierarchicalViews(views, allGear);
   }
 
-  List<PackingGearView> _buildHierarchicalViews(List<PackingGearView> flatList) {
+  List<PackingGearView> _buildHierarchicalViews(List<PackingGearView> flatList, List<Gear> allGear) {
     final result = <PackingGearView>[];
     final childrenOf = <int, List<PackingGearView>>{};
     final roots = <PackingGearView>[];
+
+    final allGearMap = {for (final g in allGear) g.id!: g};
 
     for (final v in flatList) {
       if (v.gear.parentId == null) {
@@ -111,30 +140,82 @@ class PackingState {
       }
     }
 
+    // ルートギアのソートは行わず、元のflatListの順序を反映させる
+    // _buildHierarchicalViews に渡される flatList は既に配置場所と sortOrder でソート済みであるため、
+    // その順序を維持しつつ階層を構築する
+
+    final processedGearIds = <int>{}; // 既に結果に追加されたギアのIDを追跡
+
     void addWithChildren(PackingGearView parent) {
-      result.add(parent);
+      if (processedGearIds.contains(parent.gear.id)) return;
+
+      final hasChildrenInSet = childrenOf[parent.gear.id]?.isNotEmpty == true;
+      final groupTotalWeight = hasChildrenInSet 
+          ? _calculateSubtreeWeightForPacking(parent.gear.id!, flatList, allGearMap)
+          : null; // 子がいない場合はnull
+      
+      // 親ギア自身の情報を追加
+      result.add(parent.copyWith(
+        isGroupStart: hasChildrenInSet,
+        groupTotalWeight: groupTotalWeight,
+      ));
+      processedGearIds.add(parent.gear.id!);
+
       final children = childrenOf[parent.gear.id];
       if (children != null) {
         // 子要素も元の順序（配置場所 > sortOrder）を維持
         for (final child in children) {
-          addWithChildren(child);
+          addWithChildren(child); // 再帰的に子孫を追加
+        }
+      }
+
+      // グループの終了判定
+      if (hasChildrenInSet) {
+        // result内で最後に処理された子ギアのインデックスを取得
+        final lastChildInResultIndex = result.lastIndexWhere((v) => v.gear.parentId == parent.gear.id);
+        if (lastChildInResultIndex != -1) {
+          result[lastChildInResultIndex] = result[lastChildInResultIndex].copyWith(isGroupEnd: true);
         }
       }
     }
 
-    for (final root in roots) {
-      addWithChildren(root);
+    // flatListの順序でルートアイテムと子アイテムを処理
+    for (final v in flatList) {
+      if (v.gear.parentId == null && !processedGearIds.contains(v.gear.id)) {
+        // ルートアイテムの場合
+        addWithChildren(v);
+      } else if (v.gear.parentId != null && !processedGearIds.contains(v.gear.id) && !allGearMap.containsKey(v.gear.parentId)) {
+        // 親がこのセットに含まれていない孤立した子の場合
+        result.add(v);
+        processedGearIds.add(v.gear.id!);
+      }
     }
 
-    // 親が含まれていない孤立した子がいる場合（親がこのセットに含まれていない場合など）を末尾に追加
-    final addedIds = result.map((v) => v.gear.id).toSet();
+    // 親がこのセットに含まれていない孤立した子で、まだ追加されていないものを追加
     for (final v in flatList) {
-      if (!addedIds.contains(v.gear.id)) {
+      if (!processedGearIds.contains(v.gear.id)) {
         result.add(v);
+        processedGearIds.add(v.gear.id!);
       }
     }
 
     return result;
+  }
+
+  double _calculateSubtreeWeightForPacking(int parentGearId, List<PackingGearView> allViewsInSet, Map<int, Gear> allGearMap) {
+    double total = 0.0;
+    final parentGear = allGearMap[parentGearId];
+    if (parentGear != null) {
+      total += gearLineWeight(parentGear);
+    }
+
+    final children = allGearMap.values.where((g) => g.parentId == parentGearId).toList();
+    final childrenInActiveSet = children.where((g) => allViewsInSet.any((v) => v.gear.id == g.id)).toList();
+
+    for (final childGear in childrenInActiveSet) {
+      total += _calculateSubtreeWeightForPacking(childGear.id!, allViewsInSet, allGearMap);
+    }
+    return total;
   }
 
   /// 特定の配置場所に属するギアのリストを取得

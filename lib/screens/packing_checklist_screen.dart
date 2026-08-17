@@ -600,6 +600,9 @@ class _DraggableGearTile extends ConsumerWidget {
     Widget tile = GearInventoryListTile(
       gear: view.gear,
       leading: customLeading,
+      isGroupStart: view.isGroupStart,
+      isGroupEnd: view.isGroupEnd,
+      groupTotalWeight: view.groupTotalWeight,
       trailing: placementName != null
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
