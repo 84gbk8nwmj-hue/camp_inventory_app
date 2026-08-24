@@ -65,15 +65,12 @@ class PackingSetTemplateItem {
   final String gearName;
   final String? categoryName;
 
-  const PackingSetTemplateItem({
-    required this.gearName,
-    this.categoryName,
-  });
+  const PackingSetTemplateItem({required this.gearName, this.categoryName});
 
   Map<String, dynamic> toJson() => {
-        'gearName': gearName,
-        if (categoryName != null) 'categoryName': categoryName,
-      };
+    'gearName': gearName,
+    if (categoryName != null) 'categoryName': categoryName,
+  };
 
   factory PackingSetTemplateItem.fromJson(Map<String, dynamic> json) {
     return PackingSetTemplateItem(
@@ -87,37 +84,50 @@ class DataTransferService {
   final AppDatabase _db;
   final ImageStorageService _images;
 
-  DataTransferService({
-    AppDatabase? db,
-    ImageStorageService? images,
-  })  : _db = db ?? AppDatabase.instance,
-        _images = images ?? ImageStorageService();
+  DataTransferService({AppDatabase? db, ImageStorageService? images})
+    : _db = db ?? AppDatabase.instance,
+      _images = images ?? ImageStorageService();
 
   static const backupJsonName = 'backup.json';
 
   Future<
-      ({
-        List<Gear> gear,
-        List<GearCategory> categories,
-        List<PackingSet> packingSets,
-        Map<int, List<PackingSetItem>> packingItemsBySet
-      })> _loadBackupDataFromDatabase() async {
+    ({
+      List<Gear> gear,
+      List<GearCategory> categories,
+      List<PackingSet> packingSets,
+      Map<int, List<PackingSetItem>> packingItemsBySet,
+    })
+  >
+  _loadBackupDataFromDatabase() async {
     final gear = await _db.getAllGear();
     final categories = await _db.getCategories();
     final packingSets = await _db.getPackingSets();
     final packingItemsBySet = <int, List<PackingSetItem>>{};
 
+    final packingSetsWithPlacements = <PackingSet>[];
+
     for (final set in packingSets) {
       final id = set.id;
+
       if (id != null) {
+        final placements = await _db.getPlacements(id);
+
+        packingSetsWithPlacements.add(
+          set.copyWith(
+            placements: placements,
+          ),
+        );
+
         packingItemsBySet[id] = await _db.getPackingSetItems(id);
+      } else {
+        packingSetsWithPlacements.add(set);
       }
     }
 
     return (
       gear: gear,
       categories: categories,
-      packingSets: packingSets,
+      packingSets: packingSetsWithPlacements,
       packingItemsBySet: packingItemsBySet,
     );
   }
@@ -201,22 +211,41 @@ class DataTransferService {
     final temp = await getTemporaryDirectory();
     final stamp = _timestamp();
     final workDir = Directory(p.join(temp.path, 'camp_export_$stamp'));
-    final imagesOut =
-        Directory(p.join(workDir.path, ImageStorageService.imagesSubDir));
+    final imagesOut = Directory(
+      p.join(workDir.path, ImageStorageService.imagesSubDir),
+    );
 
     try {
       await workDir.create(recursive: true);
       await imagesOut.create(recursive: true);
 
-      await File(p.join(workDir.path, backupJsonName)).writeAsString(
-        const JsonEncoder.withIndent('  ').convert(payload),
-      );
+      await File(
+        p.join(workDir.path, backupJsonName),
+      ).writeAsString(const JsonEncoder.withIndent('  ').convert(payload));
 
       for (final g in gear) {
         if (g.imageFile == null || g.imageFile!.isEmpty) continue;
         final source = _images.fileForExport(g.imageFile);
         if (source != null) {
           await source.copy(p.join(imagesOut.path, g.imageFile!));
+        }
+      }
+
+      for (final set in packingSets) {
+        final placements = set.placements;
+        if (placements == null) continue;
+
+        for (final placement in placements) {
+          if (placement.imageFile == null || placement.imageFile!.isEmpty) {
+            continue;
+          }
+
+          final source = _images.fileForExport(placement.imageFile);
+          if (source != null) {
+            await source.copy(
+              p.join(imagesOut.path, placement.imageFile!),
+            );
+          }
         }
       }
 
@@ -233,16 +262,17 @@ class DataTransferService {
         if (entity is! File) continue;
         await encoder.addFile(
           entity,
-          p.posix
-              .join(ImageStorageService.imagesSubDir, p.basename(entity.path)),
+          p.posix.join(
+            ImageStorageService.imagesSubDir,
+            p.basename(entity.path),
+          ),
         );
       }
       await encoder.close();
 
-      await Share.shareXFiles(
-        [XFile(zipPath, mimeType: 'application/zip')],
-        subject: 'キャンプギアバックアップ（画像付き）',
-      );
+      await Share.shareXFiles([
+        XFile(zipPath, mimeType: 'application/zip'),
+      ], subject: 'キャンプギアバックアップ（画像付き）');
     } finally {
       if (await workDir.exists()) {
         await workDir.delete(recursive: true);
@@ -289,11 +319,7 @@ class DataTransferService {
       }
 
       final imagesImported = await _images.importFromDirectory(baseDir);
-      final result = await importBackupJson(
-        json,
-        mode: mode,
-        skipClear: true,
-      );
+      final result = await importBackupJson(json, mode: mode, skipClear: true);
       return result.copyWith(imagesImported: imagesImported);
     } finally {
       await Directory(extractDir).delete(recursive: true);
@@ -348,6 +374,8 @@ class DataTransferService {
     }
 
     final gearIdByName = <String, int>{};
+    final oldToNewGearId = <int, int>{};
+
     for (final g in await _db.getAllGear()) {
       if (g.id != null) gearIdByName[g.name] = g.id!;
     }
@@ -367,7 +395,8 @@ class DataTransferService {
         categoryName: catName,
         quantity: map['quantity'] as int? ?? 1,
         weight: (map['weight'] as num?)?.toDouble(),
-        imageFile: map['imageFile'] as String? ??
+        imageFile:
+            map['imageFile'] as String? ??
             (map['imagePath'] != null
                 ? p.basename(map['imagePath'] as String)
                 : null),
@@ -377,14 +406,26 @@ class DataTransferService {
       );
 
       if (gearIdByName.containsKey(name)) {
+        final existingId = gearIdByName[name]!;
+
         if (mode == ImportMode.merge) {
-          await _db.updateGear(gear.copyWith(id: gearIdByName[name]));
+          await _db.updateGear(gear.copyWith(id: existingId));
           gearUpdated++;
+        }
+
+        final oldId = map['id'] as int?;
+        if (oldId != null) {
+          oldToNewGearId[oldId] = existingId;
         }
       } else {
         final id = await _db.insertGear(gear);
         gearIdByName[name] = id;
         gearAdded++;
+
+        final oldId = map['id'] as int?;
+        if (oldId != null) {
+          oldToNewGearId[oldId] = id;
+        }
       }
     }
 
@@ -393,39 +434,98 @@ class DataTransferService {
       if (g.id != null) gearIdByName[g.name] = g.id!;
     }
 
+    // 親子関係を復元
+    for (final raw in gearJson) {
+      final map = raw as Map<String, dynamic>;
+
+      final oldId = map['id'] as int?;
+      final oldParentId = map['parentId'] as int?;
+
+      if (oldId == null || oldParentId == null) continue;
+
+      final newGearId = oldToNewGearId[oldId];
+      final newParentId = oldToNewGearId[oldParentId];
+
+      if (newGearId == null || newParentId == null) continue;
+
+      final gear = (await _db.getAllGear()).firstWhere(
+        (g) => g.id == newGearId,
+      );
+
+      await _db.updateGear(
+        gear.copyWith(parentId: newParentId),
+      );
+    }
+
     final setsJson = json['packingSets'] as List<dynamic>?;
     final itemsJson = json['packingItems'] as List<dynamic>?;
 
     if (setsJson != null && itemsJson != null) {
       final oldToNewSetId = <int, int>{};
+      final oldToNewPlacementId = <int, int>{};
+
       for (final raw in setsJson) {
         final map = raw as Map<String, dynamic>;
         final oldId = map['id'] as int;
         var setName = map['name'] as String;
         if (mode == ImportMode.merge) {
-          final exists =
-              (await _db.getPackingSets()).any((s) => s.name == setName);
+          final exists = (await _db.getPackingSets()).any(
+            (s) => s.name == setName,
+          );
           if (exists) setName = '$setName (インポート)';
         }
-        oldToNewSetId[oldId] = await _db.insertPackingSet(setName);
+        final newSetId = await _db.insertPackingSet(setName);
+        oldToNewSetId[oldId] = newSetId;
         setsAdded++;
+
+        // placements の復元
+        final placementsJson = map['placements'] as List<dynamic>?;
+        if (placementsJson != null) {
+          for (final pRaw in placementsJson) {
+            final pMap = pRaw as Map<String, dynamic>;
+            final oldPlacementId = pMap['id'] as int?;
+            final newPlacementId = await _db.insertPlacementDetailed(
+              setId: newSetId,
+              name: pMap['name'] as String,
+              sortOrder: pMap['sortOrder'] as int? ?? 0,
+              imageFile: pMap['imageFile'] as String?,
+            );
+            if (oldPlacementId != null) {
+              oldToNewPlacementId[oldPlacementId] = newPlacementId;
+            }
+          }
+        }
       }
 
+      final detailedItems = <Map<String, dynamic>>[];
       for (final raw in itemsJson) {
         final block = raw as Map<String, dynamic>;
         final newSetId = oldToNewSetId[block['setId'] as int];
         if (newSetId == null) continue;
 
-        final gearIds = <int>[];
         for (final itemRaw in block['items'] as List<dynamic>) {
-          final oldGearId = (itemRaw as Map<String, dynamic>)['gear_id'] as int;
+          final itemMap = itemRaw as Map<String, dynamic>;
+          final oldGearId = itemMap['gear_id'] as int;
           final gearName = exportGearByOldId[oldGearId];
           final newGearId = gearName == null ? null : gearIdByName[gearName];
-          if (newGearId != null) gearIds.add(newGearId);
+          if (newGearId == null) continue;
+
+          final oldPlacementId = itemMap['placement_id'] as int?;
+          final newPlacementId = oldPlacementId != null
+              ? oldToNewPlacementId[oldPlacementId]
+              : null;
+
+          detailedItems.add({
+            'set_id': newSetId,
+            'gear_id': newGearId,
+            'placement_id': newPlacementId,
+            'is_packed': itemMap['is_packed'] as int? ?? 0,
+            'sort_order': itemMap['sort_order'] as int? ?? 0,
+          });
         }
-        if (gearIds.isNotEmpty) {
-          await _db.importPackingSetItems(newSetId, gearIds);
-        }
+      }
+      if (detailedItems.isNotEmpty) {
+        await _db.importDetailedPackingSetItems(detailedItems);
       }
     } else {
       final packing = json['packing'] as List<dynamic>?;
@@ -472,8 +572,10 @@ class DataTransferService {
           )
           .toList(),
     };
-    final safeName =
-        set.name.replaceAll(RegExp(r'[^\w\u3040-\u30FF\u4E00-\u9FFF]'), '_');
+    final safeName = set.name.replaceAll(
+      RegExp(r'[^\w\u3040-\u30FF\u4E00-\u9FFF]'),
+      '_',
+    );
     await _shareJsonFile(payload, 'camp_set_$safeName');
   }
 
@@ -557,17 +659,47 @@ class DataTransferService {
       type: FileType.custom,
       allowedExtensions: ['zip'],
     );
-    if (result == null || result.path == null) return null;
-    return result.path;
+    if (result == null || result.path == null) {
+      return null;
+    }
+    final path = result.path!;
+    return path;
   }
 
   Future<String> _extractZipToTemp(String zipPath) async {
     final temp = await getTemporaryDirectory();
     final dest = p.join(
-        temp.path, 'camp_import_${DateTime.now().millisecondsSinceEpoch}');
+      temp.path,
+      'camp_import_${DateTime.now().millisecondsSinceEpoch}',
+    );
     await Directory(dest).create(recursive: true);
-    await extractFileToDisk(zipPath, dest);
-    return dest;
+
+    String extractPath = zipPath;
+    String? temporaryZipPath;
+
+    try {
+      // File Picker / Google Drive経由では拡張子が失われる場合があるため、
+      // .zip がない場合のみ、一時的に .zip を付けたコピーを作成する。
+      if (!p.extension(zipPath).toLowerCase().endsWith('.zip')) {
+        temporaryZipPath = p.join(
+          temp.path,
+          'camp_import_${DateTime.now().millisecondsSinceEpoch}.zip',
+        );
+
+        await File(zipPath).copy(temporaryZipPath);
+        extractPath = temporaryZipPath;
+      }
+
+      await extractFileToDisk(extractPath, dest);
+      return dest;
+    } finally {
+      if (temporaryZipPath != null) {
+        final temporaryFile = File(temporaryZipPath);
+        if (await temporaryFile.exists()) {
+          await temporaryFile.delete();
+        }
+      }
+    }
   }
 
   Future<File?> _findBackupJson(String rootDir) async {
@@ -600,9 +732,8 @@ class DataTransferService {
     final path = p.join(dir.path, '${baseName}_${_timestamp()}.json');
     await File(path).writeAsString(json);
 
-    await Share.shareXFiles(
-      [XFile(path, mimeType: 'application/json')],
-      subject: 'キャンプギアデータ',
-    );
+    await Share.shareXFiles([
+      XFile(path, mimeType: 'application/json'),
+    ], subject: 'キャンプギアデータ');
   }
 }

@@ -798,6 +798,42 @@ class AppDatabase {
     return id;
   }
 
+  Future<int> insertPlacementDetailed({
+    required int setId,
+    required String name,
+    required int sortOrder,
+    String? imageFile,
+  }) async {
+    final db = await database;
+    final id = await db.insert('packing_placement', {
+      'set_id': setId,
+      'name': name,
+      'image_file': imageFile,
+      'sort_order': sortOrder,
+    });
+    await touchPackingSet(setId);
+    return id;
+  }
+
+  Future<void> importDetailedPackingSetItems(List<Map<String, dynamic>> items) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final item in items) {
+        await txn.insert(
+          'packing_set_item',
+          {
+            'set_id': item['set_id'],
+            'gear_id': item['gear_id'],
+            'placement_id': item['placement_id'],
+            'is_packed': item['is_packed'],
+            'sort_order': item['sort_order'],
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   Future<void> updatePlacement(PackingPlacement placement) async {
     final db = await database;
     await db.update(
