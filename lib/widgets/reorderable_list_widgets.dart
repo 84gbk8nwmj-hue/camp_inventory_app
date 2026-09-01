@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/gear.dart';
-import '../providers/gear_provider.dart';
 import '../providers/category_provider.dart';
-import '../widgets/gear_list_tile.dart';
+import '../providers/confirm_unnest_provider.dart';
+import '../providers/gear_provider.dart';
 import '../screens/gear_detail_screen.dart';
 import '../screens/gear_edit_screen.dart';
+import '../widgets/confirm_unnest_dialog.dart';
+import '../widgets/gear_list_tile.dart';
 
 class GearReorderableList extends ConsumerWidget {
   final List<Gear> items;
@@ -44,7 +46,15 @@ class GearReorderableList extends ConsumerWidget {
               await _showParentSelector(context, gear);
             } else if (direction == DismissDirection.endToStart) {
               // 左スワイプ: 解除
-              await notifier.unnestItem(id);
+              final confirm = ref.read(confirmUnnestProvider);
+              if (confirm) {
+                final shouldUnnest = await showConfirmUnnestDialog(context);
+                if (shouldUnnest) {
+                  await notifier.unnestItem(id);
+                }
+              } else {
+                await notifier.unnestItem(id);
+              }
             }
             return false; // 実際にはリストから削除しない
           },

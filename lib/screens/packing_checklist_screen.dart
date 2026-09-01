@@ -9,10 +9,12 @@ import 'package:croppy/croppy.dart';
 import '../models/gear.dart';
 
 import '../models/packing_set.dart';
+import '../providers/confirm_unnest_provider.dart';
 import '../providers/database_providers.dart';
 import '../providers/gear_provider.dart';
 import '../providers/packing_provider.dart';
 import '../utils/weight_format.dart';
+import '../widgets/confirm_unnest_dialog.dart';
 import '../widgets/gear_list_tile.dart';
 import 'packing_select_screen.dart';
 
@@ -667,7 +669,15 @@ class _DraggableGearTile extends ConsumerWidget {
               await showParentSelector(context, view.gear);
             } else if (direction == DismissDirection.endToStart) {
               // 左スワイプ: 解除
-              await ref.read(gearProvider.notifier).unnestItem(view.gear.id!);
+              final confirm = ref.read(confirmUnnestProvider);
+              if (confirm) {
+                final shouldUnnest = await showConfirmUnnestDialog(context);
+                if (shouldUnnest) {
+                  await ref.read(gearProvider.notifier).unnestItem(view.gear.id!);
+                }
+              } else {
+                await ref.read(gearProvider.notifier).unnestItem(view.gear.id!);
+              }
             }
             return false; // 実際にはリストから削除しない
           },

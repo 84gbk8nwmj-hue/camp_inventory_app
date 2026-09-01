@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_theme_provider.dart';
+import '../providers/confirm_unnest_provider.dart';
 import '../theme/app_color_theme.dart';
 import 'privacy_policy_screen.dart';
 
@@ -11,6 +12,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(appThemeProvider);
+    final confirmUnnest = ref.watch(confirmUnnestProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
@@ -43,6 +45,19 @@ class ThemeSettingsScreen extends ConsumerWidget {
             );
           }),
           const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            title: const Text('格納解除時に確認する'),
+            subtitle: const Text('左スワイプで格納解除する際に確認ダイアログを表示します'),
+            value: confirmUnnest,
+            onChanged: (value) async {
+              await ref
+                  .read(confirmUnnestProvider.notifier)
+                  .setConfirmUnnest(value);
+            },
+          ),
+          const SizedBox(height: 8),
           const Divider(),
           const SizedBox(height: 8),
           ListTile(
