@@ -94,18 +94,60 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
 
 
 
+  void _showProgressDialog(String message) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _createBackup() async {
     if (_transferring) return;
     setState(() => _transferring = true);
+
+    bool dialogShown = false;
+    void hideProgress() {
+      if (dialogShown && mounted) {
+        dialogShown = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+
     try {
-      await ref.read(dataTransferServiceProvider).shareBackupZipFromDatabase();
+      _showProgressDialog('バックアップを作成しています…');
+      dialogShown = true;
+
+      await ref.read(dataTransferServiceProvider).shareBackupZipFromDatabase(
+        onBeforeShare: () {
+          hideProgress();
+        },
+      );
     } catch (e) {
+      hideProgress();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('バックアップ作成に失敗しました: $e')),
         );
       }
     } finally {
+      hideProgress();
       if (mounted) setState(() => _transferring = false);
     }
   }
@@ -139,6 +181,7 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
       ),
     );
     if (mode == null) return;
+    if (!mounted) return;
 
     if (mode == ImportMode.replace) {
       final confirm = await showDialog<bool>(
@@ -159,12 +202,29 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
         ),
       );
       if (confirm != true) return;
+      if (!mounted) return;
     }
 
     setState(() => _transferring = true);
+
+    bool dialogShown = false;
+    void hideProgress() {
+      if (dialogShown && mounted) {
+        dialogShown = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+
     try {
       final service = ref.read(dataTransferServiceProvider);
-      final result = await service.pickAndImportBackupZip(mode: mode);
+      final result = await service.pickAndImportBackupZip(
+        mode: mode,
+        onZipPicked: () {
+          _showProgressDialog('バックアップを復元しています…');
+          dialogShown = true;
+        },
+      );
+      hideProgress();
       if (result == null) return;
 
       await reloadAllProviders(ref);
@@ -184,12 +244,14 @@ class _GearListScreenState extends ConsumerState<GearListScreen> {
         );
       }
     } catch (e) {
+      hideProgress();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('復元に失敗しました: $e')),
         );
       }
     } finally {
+      hideProgress();
       if (mounted) setState(() => _transferring = false);
     }
   }
