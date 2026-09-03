@@ -61,24 +61,7 @@ class ImportResult {
   }
 }
 
-class PackingSetTemplateItem {
-  final String gearName;
-  final String? categoryName;
 
-  const PackingSetTemplateItem({required this.gearName, this.categoryName});
-
-  Map<String, dynamic> toJson() => {
-    'gearName': gearName,
-    if (categoryName != null) 'categoryName': categoryName,
-  };
-
-  factory PackingSetTemplateItem.fromJson(Map<String, dynamic> json) {
-    return PackingSetTemplateItem(
-      gearName: json['gearName'] as String,
-      categoryName: json['categoryName'] as String?,
-    );
-  }
-}
 
 class DataTransferService {
   final AppDatabase _db;
@@ -183,13 +166,16 @@ class DataTransferService {
   }
 
   /// JSON + gear_images/ を ZIP にまとめて共有
-  Future<void> shareBackupZipFromDatabase() async {
+  Future<void> shareBackupZipFromDatabase({
+    void Function()? onBeforeShare,
+  }) async {
     final data = await _loadBackupDataFromDatabase();
     await shareBackupZip(
       gear: data.gear,
       categories: data.categories,
       packingSets: data.packingSets,
       packingItemsBySet: data.packingItemsBySet,
+      onBeforeShare: onBeforeShare,
     );
   }
 
@@ -199,6 +185,7 @@ class DataTransferService {
     required List<GearCategory> categories,
     required List<PackingSet> packingSets,
     required Map<int, List<PackingSetItem>> packingItemsBySet,
+    void Function()? onBeforeShare,
   }) async {
     await _images.init();
     final payload = _buildBackupPayload(
@@ -270,6 +257,8 @@ class DataTransferService {
       }
       await encoder.close();
 
+      onBeforeShare?.call();
+
       await Share.shareXFiles([
         XFile(zipPath, mimeType: 'application/zip'),
       ], subject: 'キャンプギアバックアップ（画像付き）');
@@ -293,9 +282,12 @@ class DataTransferService {
 
   Future<ImportResult?> pickAndImportBackupZip({
     required ImportMode mode,
+    void Function()? onZipPicked,
   }) async {
     final zipPath = await _pickZipFile();
     if (zipPath == null) return null;
+
+    onZipPicked?.call();
 
     final extractDir = await _extractZipToTemp(zipPath);
     try {
@@ -553,96 +545,7 @@ class DataTransferService {
     );
   }
 
-  Future<void> sharePackingSetTemplate({
-    required PackingSet set,
-    required List<Gear> gearInSet,
-  }) async {
-    final payload = {
-      'app': 'camp_inventory_app',
-      'type': 'packing_set_template',
-      'version': 1,
-      'exportedAt': DateTime.now().toIso8601String(),
-      'setName': set.name,
-      'items': gearInSet
-          .map(
-            (g) => PackingSetTemplateItem(
-              gearName: g.name,
-              categoryName: g.categoryName,
-            ).toJson(),
-          )
-          .toList(),
-    };
-    final safeName = set.name.replaceAll(
-      RegExp(r'[^\w\u3040-\u30FF\u4E00-\u9FFF]'),
-      '_',
-    );
-    await _shareJsonFile(payload, 'camp_set_$safeName');
-  }
 
-  Future<ImportResult?> pickAndImportPackingTemplate() async {
-    final json = await _pickJsonFile();
-    if (json == null) return null;
-
-    if (json['type'] != 'packing_set_template') {
-      throw FormatException('持ち出しセット用テンプレートではありません。');
-    }
-
-    return importPackingTemplateJson(json);
-  }
-
-  Future<ImportResult> importPackingTemplateJson(
-    Map<String, dynamic> json, {
-    String? setNameOverride,
-  }) async {
-    var setName = setNameOverride ?? json['setName'] as String? ?? 'インポートセット';
-    if ((await _db.getPackingSets()).any((s) => s.name == setName)) {
-      setName = '$setName (インポート)';
-    }
-
-    final setId = await _db.insertPackingSet(setName);
-    final allGear = await _db.getAllGear();
-    final items = (json['items'] as List<dynamic>)
-        .map((e) => PackingSetTemplateItem.fromJson(e as Map<String, dynamic>))
-        .toList();
-
-    final matchedIds = <int>[];
-    final skipped = <String>[];
-
-    for (final item in items) {
-      final gearId = _matchGear(allGear, item);
-      if (gearId != null) {
-        matchedIds.add(gearId);
-      } else {
-        skipped.add(item.gearName);
-      }
-    }
-
-    if (matchedIds.isNotEmpty) {
-      await _db.importPackingSetItems(setId, matchedIds);
-    }
-    await _db.setActivePackingSetId(setId);
-
-    return ImportResult(
-      setsAdded: 1,
-      templateItemsMatched: matchedIds.length,
-      templateItemsSkipped: skipped.length,
-      skippedGearNames: skipped,
-    );
-  }
-
-  int? _matchGear(List<Gear> allGear, PackingSetTemplateItem item) {
-    final name = item.gearName.trim();
-    final matches = allGear.where((g) => g.name == name).toList();
-    if (matches.isEmpty) return null;
-    if (matches.length == 1) return matches.first.id;
-
-    if (item.categoryName != null) {
-      for (final g in matches) {
-        if (g.categoryName == item.categoryName) return g.id;
-      }
-    }
-    return matches.first.id;
-  }
 
   Future<Map<String, dynamic>?> _pickJsonFile() async {
     final result = await FilePicker.pickFile(

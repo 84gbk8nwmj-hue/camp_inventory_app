@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/packing_set.dart';
-import '../providers/data_transfer_provider.dart'; // 再追加
-import '../providers/gear_provider.dart';
 import '../providers/packing_provider.dart';
 import 'packing_checklist_screen.dart';
 
@@ -74,38 +72,7 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
     ctrl.dispose();
   }
 
-  Future<void> _shareTemplate(
-    BuildContext context,
-    WidgetRef ref,
-    PackingSet set,
-  ) async {
-    final gearState = ref.read(gearProvider);
-    final gearInSet = await ref
-        .read(packingProvider.notifier)
-        .gearForSet(set.id!, gearState.items);
 
-    if (gearInSet.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('セットにギアがありません')),
-        );
-      }
-      return;
-    }
-
-    try {
-      await ref.read(dataTransferServiceProvider).sharePackingSetTemplate(
-            set: set,
-            gearInSet: gearInSet,
-          );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('共有に失敗しました: $e')),
-        );
-      }
-    }
-  }
 
   Future<void> _renameSet(
     BuildContext context,
@@ -267,8 +234,6 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
                               trailing: PopupMenuButton<String>(
                                 onSelected: (v) {
                                   switch (v) {
-                                    case 'share':
-                                      _shareTemplate(context, ref, set);
                                     case 'rename':
                                       _renameSet(context, ref, set);
                                     case 'duplicate':
@@ -278,10 +243,6 @@ class _PackingSetsScreenState extends ConsumerState<PackingSetsScreen> {
                                   }
                                 },
                                 itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'share',
-                                    child: Text('テンプレートを共有'),
-                                  ),
                                   PopupMenuItem(
                                       value: 'rename', child: Text('名前変更')),
                                   PopupMenuItem(
