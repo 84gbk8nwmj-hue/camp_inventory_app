@@ -2,6 +2,8 @@
   import 'package:url_launcher/url_launcher.dart' as url_launcher;
   import 'package:geolocator/geolocator.dart'; // 現在地取得のために追加
   import 'dart:io';
+  import 'dart:convert';
+  import '../db/app_database.dart';
 
   // 周辺スポットのカテゴリ定義
   enum SpotCategory {
@@ -43,6 +45,33 @@
     }
   }
 
+  // カスタム検索項目のモデル
+  class CustomSpotSearchItem {
+    final String id;
+    final String name;
+    final String searchWord;
+
+    CustomSpotSearchItem({
+      required this.id,
+      required this.name,
+      required this.searchWord,
+    });
+
+    Map<String, dynamic> toJson() => {
+      'id': id,
+      'name': name,
+      'searchWord': searchWord,
+    };
+
+    factory CustomSpotSearchItem.fromJson(Map<String, dynamic> json) {
+      return CustomSpotSearchItem(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        searchWord: json['searchWord'] as String? ?? '',
+      );
+    }
+  }
+
   class NearbyStoreSearchScreen extends StatefulWidget {
     const NearbyStoreSearchScreen({super.key});
 
@@ -52,6 +81,9 @@
 
   class _NearbyStoreSearchScreenState extends State<NearbyStoreSearchScreen> {
     Position? _currentPosition; // 現在地を保持するための変数
+
+    static const _customItemsKey = 'custom_spot_search_items';
+    List<CustomSpotSearchItem> _customItems = [];
 
     final List<Map<String, dynamic>> _categories = [
       {'label': 'スーパー', 'category': SpotCategory.supermarket, 'icon': Icons.local_grocery_store, 'searchWord': 'スーパー'},
@@ -66,6 +98,7 @@
   void initState() {
     super.initState();
     _determinePosition(); // 画面初期化時に現在地を取得
+    _loadCustomItems(); // 保存されたカスタム検索項目を読み込み
   }
 
   // 現在地取得のメソッド (前回のコードから再利用)
@@ -161,49 +194,301 @@ Future<void> _launchGoogleMapsSearch(String searchWord) async {
   }
 }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('周辺スポット検索'),
-      ),
-      body: ListView.builder(
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          final categoryData = _categories[index];
-          final label = categoryData['label'] as String;
-          final icon = categoryData['icon'] as IconData;
-          final searchWord = categoryData['searchWord'] as String;
-          final colorScheme = Theme.of(context).colorScheme;
+  Future<void> _loadCustomItems() async {
+    try {
+      final jsonStr = await AppDatabase.instance.getAppSetting(_customItemsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr);
+        if (decoded is List) {
+          final loaded = <CustomSpotSearchItem>[];
+          for (final item in decoded) {
+            if (item is Map) {
+              loaded.add(CustomSpotSearchItem.fromJson(Map<String, dynamic>.from(item)));
+            }
+          }
+          if (mounted) {
+            setState(() {
+              _customItems = loaded;
+            });
+          }
+        }
+      }
+    } catch (e, stack) {
+      debugPrint('カスタム検索項目の読み込みエラー: $e\n$stack');
+    }
+  }
 
-          return Card(
-            color: colorScheme.surfaceContainerHighest,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: InkWell(
-              onTap: () => _launchGoogleMapsSearch(searchWord),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Icon(icon, color: colorScheme.primary, size: 30),
-                    const SizedBox(width: 16),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.arrow_forward_ios, color: colorScheme.onSurfaceVariant),
-                  ],
+  Future<void> _saveCustomItems() async {
+    try {
+      final jsonStr = jsonEncode(_customItems.map((item) => item.toJson()).toList());
+      await AppDatabase.instance.setAppSetting(_customItemsKey, jsonStr);
+    } catch (e, stack) {
+      debugPrint('カスタム検索項目の保存エラー: $e\n$stack');
+    }
+  }
+
+  Future<void> _showAddOrEditDialog({CustomSpotSearchItem? item}) async {
+    final isEdit = item != null;
+    final nameCtrl = TextEditingController(text: item?.name ?? '');
+    final wordCtrl = TextEditingController(text: item?.searchWord ?? '');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEdit ? 'カスタム項目を編集' : 'カスタム項目を追加'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: '表示名称',
+                  hintText: '例: 釣具店',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: wordCtrl,
+                decoration: const InputDecoration(
+                  labelText: '検索キーワード',
+                  hintText: '例: 釣具',
                 ),
               ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(isEdit ? '保存' : '追加'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      final name = nameCtrl.text.trim();
+      final searchWord = wordCtrl.text.trim();
+      if (name.isNotEmpty && searchWord.isNotEmpty) {
+        setState(() {
+          if (isEdit) {
+            final index = _customItems.indexWhere((e) => e.id == item.id);
+            if (index != -1) {
+              _customItems[index] = CustomSpotSearchItem(
+                id: item.id,
+                name: name,
+                searchWord: searchWord,
+              );
+            }
+          } else {
+            _customItems.add(
+              CustomSpotSearchItem(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: name,
+                searchWord: searchWord,
+              ),
+            );
+          }
+        });
+        await _saveCustomItems();
+      }
+    }
+    nameCtrl.dispose();
+    wordCtrl.dispose();
+  }
+
+  Future<void> _deleteCustomItem(CustomSpotSearchItem item) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('カスタム項目を削除'),
+        content: Text('「${item.name}」を削除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      setState(() {
+        _customItems.removeWhere((e) => e.id == item.id);
+      });
+      await _saveCustomItems();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: const Text('周辺スポット検索'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'カスタム項目を追加',
+            onPressed: () => _showAddOrEditDialog(),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          // 既存の固定カテゴリ
+          ..._categories.map((categoryData) {
+            final label = categoryData['label'] as String;
+            final icon = categoryData['icon'] as IconData;
+            final searchWord = categoryData['searchWord'] as String;
+
+            return Card(
+              color: colorScheme.surfaceContainerHighest,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: InkWell(
+                onTap: () => _launchGoogleMapsSearch(searchWord),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(icon, color: colorScheme.primary, size: 30),
+                      const SizedBox(width: 16),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.arrow_forward_ios, color: colorScheme.onSurfaceVariant),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+
+          // カスタム検索セクションヘッダー
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'カスタム検索',
+                  style: TextStyle(
+                    color: colorScheme.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showAddOrEditDialog(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('追加'),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+
+          if (_customItems.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Card(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Center(
+                    child: Text(
+                      '登録されたカスタム検索項目はありません。\n「追加」からキーワードを登録できます。',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._customItems.map((item) {
+              return Card(
+                color: colorScheme.surfaceContainerHighest,
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                clipBehavior: Clip.antiAlias,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _launchGoogleMapsSearch(item.searchWord),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          child: Row(
+                            children: [
+                              Icon(Icons.search, color: colorScheme.primary, size: 30),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.name,
+                                      style: TextStyle(
+                                        color: colorScheme.onSurface,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'キーワード: ${item.searchWord}',
+                                      style: TextStyle(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      color: colorScheme.onSurfaceVariant,
+                      tooltip: '編集',
+                      onPressed: () => _showAddOrEditDialog(item: item),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: colorScheme.error,
+                      tooltip: '削除',
+                      onPressed: () => _deleteCustomItem(item),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                ),
+              );
+            }),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
