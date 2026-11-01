@@ -88,7 +88,7 @@
     List<CustomSpotSearchItem> _customItems = [];
     Set<SpotCategory> _hiddenCategories = {};
 
-    List<Map<String, dynamic>> _categories = [
+    final List<Map<String, dynamic>> _categories = [
       {'label': 'スーパー', 'category': SpotCategory.supermarket, 'icon': Icons.local_grocery_store, 'searchWord': 'スーパー'},
       {'label': 'ホームセンター', 'category': SpotCategory.homeCenter, 'icon': Icons.build, 'searchWord': 'ホームセンター'},
       {'label': 'アウトドアショップ', 'category': SpotCategory.outdoorShop, 'icon': Icons.hiking, 'searchWord': 'アウトドアショップ'},
@@ -482,9 +482,6 @@ Future<void> _launchGoogleMapsSearch(String searchWord) async {
   }
 
   void _onReorderFieldSearch(int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
     if (oldIndex == newIndex) return;
 
     final visible = _categories.where((c) {
@@ -512,9 +509,6 @@ Future<void> _launchGoogleMapsSearch(String searchWord) async {
   }
 
   void _onReorderCustomSearch(int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
     if (oldIndex == newIndex) return;
 
     setState(() {
@@ -587,7 +581,7 @@ Future<void> _launchGoogleMapsSearch(String searchWord) async {
           else
             SliverReorderableList(
               itemCount: visibleCategories.length,
-              onReorder: _onReorderFieldSearch,
+              onReorderItem: _onReorderFieldSearch,
               itemBuilder: (context, index) {
                 final categoryData = visibleCategories[index];
                 final category = categoryData['category'] as SpotCategory;
@@ -693,7 +687,7 @@ Future<void> _launchGoogleMapsSearch(String searchWord) async {
           else
             SliverReorderableList(
               itemCount: _customItems.length,
-              onReorder: _onReorderCustomSearch,
+              onReorderItem: _onReorderCustomSearch,
               itemBuilder: (context, index) {
                 final item = _customItems[index];
 
